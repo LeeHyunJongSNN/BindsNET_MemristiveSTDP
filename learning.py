@@ -89,7 +89,7 @@ class LearningRule(ABC):
 
         # Bound weights.
         if (
-            self.connection.wmin != -np.inf or self.connection.wmax != np.inf
+            self.connection.wmin != 0.0 or self.connection.wmax != 1.0 # -np.inf, np.inf
         ) and not isinstance(self, NoOp):
             self.connection.w.clamp_(self.connection.wmin, self.connection.wmax)
 
@@ -303,8 +303,6 @@ class NonLinear(LearningRule):
         batch_size = self.source.batch_size
 
         # Modified stdp rule.(논문의 수식을 반영하고 있는 부분)
-        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         vltp = 10.0
         vltd = 10.0
         gmax = 1.0
@@ -351,8 +349,6 @@ class NonLinear(LearningRule):
         batch_size = self.source.batch_size
 
         # Modified stdp rule.(논문의 수식을 반영하고 있는 부분)
-        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         vltp = 10.0
         vltd = 10.0
         gmax = 1.0
@@ -603,11 +599,11 @@ class Hebbian(LearningRule):
 
         # Pre-synaptic update.
         update = self.reduction(torch.bmm(source_s, target_x), dim=0)
-        self.connection.w += self.nu[0] * update # self.nu[0]
+        self.connection.w += self.nu[0] * update
 
         # Post-synaptic update.
         update = self.reduction(torch.bmm(source_x, target_s), dim=0)
-        self.connection.w += self.nu[1] * update #self.nu[1]
+        self.connection.w += self.nu[1] * update
 
         super().update()
 
