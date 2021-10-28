@@ -10,9 +10,9 @@ from tqdm import tqdm
 
 from bindsnet.datasets import MNIST
 from bindsnet.encoding import PoissonEncoder
-from bindsnet.models import DiehlAndCook2015
+from bindsnet.models import DiehlAndCook2015_NonLinear
 from bindsnet.network.monitors import Monitor
-from bindsnet.utils import get_square_assignments, get_square_weights
+from bindsnet.utils import get_square_assignments, get_square_weights, get_synptic_weights
 from bindsnet.evaluation import all_activity, proportion_weighting, assign_labels
 from bindsnet.analysis.plotting import (
     plot_input,
@@ -25,7 +25,7 @@ from bindsnet.analysis.plotting import (
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--n_neurons", type=int, default=100)
+parser.add_argument("--n_neurons", type=int, default=300)
 parser.add_argument("--n_train", type=int, default=60000)
 parser.add_argument("--n_test", type=int, default=10000)
 parser.add_argument("--n_clamp", type=int, default=1)
@@ -86,7 +86,7 @@ start_intensity = intensity
 per_class = int(n_neurons / n_classes)
 
 # Build Diehl & Cook 2015 network.
-network = DiehlAndCook2015(
+network = DiehlAndCook2015_NonLinear(
     n_inpt=784,
     n_neurons=n_neurons,
     exc=exc,
@@ -149,10 +149,12 @@ inpt_ims = None
 spike_axes = None
 spike_ims = None
 weights_im = None
+sy_weights_im = None
 assigns_im = None
 perf_ax = None
 voltage_axes = None
 voltage_ims = None
+p = 0
 
 pbar = tqdm(total=n_train)
 for (i, datum) in enumerate(dataloader):
@@ -205,7 +207,7 @@ for (i, datum) in enumerate(dataloader):
         inputs = {"X": image.cuda().view(time, 1, 1, 28, 28)}
     else:
         inputs = {"X": image.view(time, 1, 1, 28, 28)}
-    network.run(inputs=inputs, time=time, clamp=clamp)
+    network.run(inputs=inputs, time=time, clamp=clamp, p = p)
 
     # Get voltage recording.
     exc_voltages = exc_voltage_monitor.get("v")
@@ -213,13 +215,18 @@ for (i, datum) in enumerate(dataloader):
 
     # Add to spikes recording.
     spike_record[i % update_interval] = spikes["Ae"].get("s").view(time, n_neurons)
+    p = torch.sum(spikes["Ae"].get("s").view(time, n_neurons))
 
     # Optionally plot various simulation information.
     if plot:
         inpt = inputs["X"].view(time, 784).sum(0).view(28, 28)
         input_exc_weights = network.connections[("X", "Ae")].w
+        exc_inh_weights = network.connections[("Ae", "Ai")].w
         square_weights = get_square_weights(
             input_exc_weights.view(784, n_neurons), n_sqrt, 28
+        )
+        synaptic_weights = get_synptic_weights(
+            exc_inh_weights.view(n_neurons, n_neurons), n_sqrt, 30
         )
         square_assignments = get_square_assignments(assignments, n_sqrt)
         voltages = {"Ae": exc_voltages, "Ai": inh_voltages}
@@ -233,6 +240,7 @@ for (i, datum) in enumerate(dataloader):
             axes=spike_axes,
         )
         weights_im = plot_weights(square_weights, im=weights_im)
+        sy_weights_im = plot_weights(synaptic_weights, im=sy_weights_im)
         assigns_im = plot_assignments(square_assignments, im=assigns_im)
         perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
         voltage_ims, voltage_axes = plot_voltages(
@@ -314,8 +322,8 @@ for step, batch in enumerate(test_dataset):
     )
     pbar.update()
 
-print("\nAll activity accuracy: %.2f" % (accuracy["all"] / n_test))
-print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test))
+print("\nAll activity accuracy: %.2f" % (accuracy["all"] / n_test * 100))
+print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test * 100))
 
 
 print("Testing complete.\n")
