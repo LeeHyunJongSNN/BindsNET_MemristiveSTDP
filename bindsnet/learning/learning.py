@@ -89,7 +89,7 @@ class LearningRule(ABC):
 
         # Bound weights.
         if (
-            self.connection.wmin != 0.0 or self.connection.wmax != 1.0 # -np.inf, np.inf
+            self.connection.wmin != 0.0 or self.connection.wmax != 1.0 # self.connection.wmin != -np.inf or self.connection.wmax != np.inf
         ) and not isinstance(self, NoOp):
             self.connection.w.clamp_(self.connection.wmin, self.connection.wmax)
 
@@ -303,6 +303,8 @@ class NonLinear(LearningRule):
         batch_size = self.source.batch_size
 
         # Modified stdp rule.(논문의 수식을 반영하고 있는 부분)
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         vltp = 10.0
         vltd = 10.0
         gmax = 1.0
@@ -312,9 +314,9 @@ class NonLinear(LearningRule):
         plist = list(kwargs.values())
         p = plist[3]
         b = 4.0
-        wltp = gmin + altp * (1.0 - e ** (vltp * b * p / 256.0))
-        wltd = gmax - altd * (1.0 - e ** (-vltd * (1.0 - p / 256.0)))
-        prime_wltp = altp * -vltp * b / 256.0 * e ** (-vltp * b * p / 256.0)
+        # wltp = gmin + altp * (1.0 - e ** (vltp * b * p / 256.0))
+        # wltd = gmax - altd * (1.0 - e ** (-vltd * (1.0 - p / 256.0)))
+        prime_wltp = altp * vltp * b / 256.0 * e ** (-vltp * b * p / 256.0)
         prime_wltd = altd * vltd / 256.0 * e ** (-vltd * (1.0 - p / 256.0))
         # delta_wltp = (altp + gmin - wltp) * (1 - e ** (- vltp * prime_wltp / (gmax - gmin)))
         # delta_wltd = -(wltd + altd - gmax) * (1 - e ** (vltd * prime_wltd / (gmax - gmin)))
@@ -349,17 +351,20 @@ class NonLinear(LearningRule):
         batch_size = self.source.batch_size
 
         # Modified stdp rule.(논문의 수식을 반영하고 있는 부분)
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         vltp = 10.0
         vltd = 10.0
         gmax = 1.0
         gmin = 0.0
         altp = (gmax - gmin) / (1.0 - e ** (-vltp))
         altd = (gmax - gmin) / (1.0 - e ** (-vltd))
-        p = kwargs
+        plist = list(kwargs.values())
+        p = plist[3]
         b = 4.0
-        wltp = gmin + altp * (1.0 - e ** (vltp * b * p / 256.0))
-        wltd = gmax - altd * (1.0 - e ** (-vltd * (1.0 - p / 256.0)))
-        prime_wltp = altp * -vltp * b / 256.0 * e ** (-vltp * b * p / 256.0)
+        # wltp = gmin + altp * (1.0 - e ** (vltp * b * p / 256.0))
+        # wltd = gmax - altd * (1.0 - e ** (-vltd * (1.0 - p / 256.0)))
+        prime_wltp = -altp * vltp * b / 256.0 * e ** (vltp * b * p / 256.0)
         prime_wltd = altd * vltd / 256.0 * e ** (-vltd * (1.0 - p / 256.0))
         # delta_wltp = (altp + gmin - wltp) * (1 - e ** (- vltp * prime_wltp / (gmax - gmin)))
         # delta_wltd = -(wltd + altd - gmax) * (1 - e ** (vltd * prime_wltd / (gmax - gmin)))
@@ -599,11 +604,11 @@ class Hebbian(LearningRule):
 
         # Pre-synaptic update.
         update = self.reduction(torch.bmm(source_s, target_x), dim=0)
-        self.connection.w += self.nu[0] * update
+        self.connection.w += self.nu[0] * update # self.nu[0]
 
         # Post-synaptic update.
         update = self.reduction(torch.bmm(source_x, target_s), dim=0)
-        self.connection.w += self.nu[1] * update
+        self.connection.w += self.nu[1] * update #self.nu[1]
 
         super().update()
 

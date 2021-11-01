@@ -12,7 +12,7 @@ from bindsnet.datasets import MNIST
 from bindsnet.encoding import PoissonEncoder
 from bindsnet.models import DiehlAndCook2015_NonLinear
 from bindsnet.network.monitors import Monitor
-from bindsnet.utils import get_square_assignments, get_square_weights, get_synptic_weights
+from bindsnet.utils import get_square_assignments, get_square_weights, get_AeAi_weights
 from bindsnet.evaluation import all_activity, proportion_weighting, assign_labels
 from bindsnet.analysis.plotting import (
     plot_input,
@@ -32,7 +32,7 @@ parser.add_argument("--n_clamp", type=int, default=1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=120)
 parser.add_argument("--theta_plus", type=float, default=0.05)
-parser.add_argument("--time", type=int, default=250)
+parser.add_argument("--time", type=int, default=1000)
 parser.add_argument("--dt", type=int, default=1.0)
 parser.add_argument("--intensity", type=float, default=32)
 parser.add_argument("--progress_interval", type=int, default=10)
@@ -65,6 +65,11 @@ gpu = args.gpu
 device_id = args.device_id
 
 # Sets up Gpu use
+print("Existence of GPU:", torch.cuda.is_available())
+print("Number of GPUs:", torch.cuda.device_count())
+print("Used GPU's Index:", torch.cuda.current_device())
+print(torch.cuda.get_device_name(0))
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if gpu and torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)
@@ -149,7 +154,7 @@ inpt_ims = None
 spike_axes = None
 spike_ims = None
 weights_im = None
-sy_weights_im = None
+AeAi_weights_im = None
 assigns_im = None
 perf_ax = None
 voltage_axes = None
@@ -157,6 +162,11 @@ voltage_ims = None
 p = 0
 
 pbar = tqdm(total=n_train)
+
+print("Number of Ae spikes(p value): %d" % (p))
+print("Weights tensor between X and Ae: ", network.connections[("X", "Ae")].w)
+print("Weights tensor between Ae and Ai: ", network.connections[("Ae", "Ai")].w)
+
 for (i, datum) in enumerate(dataloader):
     if i > n_train:
         break
@@ -192,6 +202,10 @@ for (i, datum) in enumerate(dataloader):
             )
         )
 
+        print("Number of Ae spikes(p value): %d" % (p))
+        print("Weights tensor between X and Ae: ", network.connections[("X", "Ae")].w)
+        print("Weights tensor between Ae and Ai: ", network.connections[("Ae", "Ai")].w)
+
         # Assign labels to excitatory layer neurons.
         assignments, proportions, rates = assign_labels(
             spike_record, labels, n_classes, rates
@@ -207,7 +221,7 @@ for (i, datum) in enumerate(dataloader):
         inputs = {"X": image.cuda().view(time, 1, 1, 28, 28)}
     else:
         inputs = {"X": image.view(time, 1, 1, 28, 28)}
-    network.run(inputs=inputs, time=time, clamp=clamp, p = p)
+    network.run(inputs=inputs, time=time, clamp=clamp, p=p)
 
     # Get voltage recording.
     exc_voltages = exc_voltage_monitor.get("v")
@@ -215,7 +229,12 @@ for (i, datum) in enumerate(dataloader):
 
     # Add to spikes recording.
     spike_record[i % update_interval] = spikes["Ae"].get("s").view(time, n_neurons)
-    p = torch.sum(spikes["Ae"].get("s").view(time, n_neurons))
+    Num_Ae_spikes = spikes["Ae"].get("s").squeeze().sum()
+    if Num_Ae_spikes > 0:
+        p = spikes["X"].get("s").squeeze().sum()
+
+    else:
+        p = 0
 
     # Optionally plot various simulation information.
     if plot:
@@ -225,7 +244,7 @@ for (i, datum) in enumerate(dataloader):
         square_weights = get_square_weights(
             input_exc_weights.view(784, n_neurons), n_sqrt, 28
         )
-        synaptic_weights = get_synptic_weights(
+        AeAi_weights = get_AeAi_weights(
             exc_inh_weights.view(n_neurons, n_neurons), n_sqrt, 30
         )
         square_assignments = get_square_assignments(assignments, n_sqrt)
@@ -240,7 +259,7 @@ for (i, datum) in enumerate(dataloader):
             axes=spike_axes,
         )
         weights_im = plot_weights(square_weights, im=weights_im)
-        sy_weights_im = plot_weights(synaptic_weights, im=sy_weights_im)
+        AeAi_weights_im = plot_weights(AeAi_weights, im=AeAi_weights_im)
         assigns_im = plot_assignments(square_assignments, im=assigns_im)
         perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
         voltage_ims, voltage_axes = plot_voltages(
@@ -290,7 +309,13 @@ for step, batch in enumerate(test_dataset):
         inputs = {k: v.cuda() for k, v in inputs.items()}
 
     # Run the network on the input.
-    network.run(inputs=inputs, time=time, input_time_dim=1)
+    network.run(inputs=inputs, time=time, input_time_dim=1, p=p)
+    Num_Ae_spikes = spikes["Ae"].get("s").squeeze().long().sum()
+    if Num_Ae_spikes > 0:
+        p = spikes["X"].get("s").squeeze().sum()
+
+    else:
+        p = 0
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()

@@ -52,15 +52,15 @@ class AbstractConnection(ABC, Module):
         self.source = source
         self.target = target
 
-        self.nu = nu
+        # self.nu = nu
         self.weight_decay = weight_decay
         self.reduction = reduction
 
         from ..learning import NoOp
 
         self.update_rule = kwargs.get("update_rule", NoOp)
-        self.wmin = kwargs.get("wmin", 0.0) #-np.inf
-        self.wmax = kwargs.get("wmax", 1.0) #np.inf
+        self.wmin = kwargs.get("wmin", 0.0) # -np.inf
+        self.wmax = kwargs.get("wmax", 1.0) # np.inf
         self.norm = kwargs.get("norm", None)
         self.decay = kwargs.get("decay", None)
 
@@ -151,7 +151,6 @@ class Connection(AbstractConnection):
         :param float norm: Total weight per target neuron normalization constant.
         """
 
-        # 이현종 수정
         super().__init__(source, target, nu, reduction, weight_decay, **kwargs)
 
         w = kwargs.get("w", None)
@@ -161,7 +160,7 @@ class Connection(AbstractConnection):
             else:
                 w = self.wmin + torch.rand(source.n, target.n) * (self.wmax - self.wmin)
         else:
-            if self.wmin != 0.0 or self.wmax != 1.0:  # if self.wmin != -np.inf or self.wmax != np.inf:
+            if self.wmin != 0.0 or self.wmax != 1.0: # if self.wmin != -np.inf or self.wmax != np.inf:
                 w = torch.clamp(torch.as_tensor(w), self.wmin, self.wmax)
 
         self.w = Parameter(w, requires_grad=False)
@@ -174,8 +173,6 @@ class Connection(AbstractConnection):
 
         if isinstance(self.target, CSRMNodes):
             self.s_w = None
-
-        #이현종 수정 끝
 
     def compute(self, s: torch.Tensor) -> torch.Tensor:
         # language=rst

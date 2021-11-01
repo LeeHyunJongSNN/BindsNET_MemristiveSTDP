@@ -1,8 +1,10 @@
+import collections
 import os
 import torch
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import gc
 
 from torchvision import transforms
 from tqdm import tqdm
@@ -13,8 +15,7 @@ from bindsnet.datasets import MNIST
 from bindsnet.encoding import PoissonEncoder
 from bindsnet.models import DiehlAndCook2015_NonLinear
 from bindsnet.network.monitors import Monitor
-from bindsnet.learning.learning import NonLinear
-from bindsnet.utils import get_square_weights, get_square_assignments, get_synptic_weights
+from bindsnet.utils import get_square_weights, get_square_assignments, get_AeAi_weights
 from bindsnet.evaluation import all_activity, proportion_weighting, assign_labels
 from bindsnet.analysis.plotting import (
     plot_input,
@@ -36,9 +37,9 @@ parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=120)
 parser.add_argument("--theta_plus", type=float, default=0.05)
-parser.add_argument("--time", type=int, default=1000)
+parser.add_argument("--time", type=int, default=45)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=128)
+parser.add_argument("--intensity", type=float, default=64)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=250)
 parser.add_argument("--train", dest="train", action="store_true")
@@ -68,6 +69,9 @@ plot = args.plot
 gpu = args.gpu
 
 # Sets up Gpu use
+gc.collect()
+torch.cuda.empty_cache()
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if gpu and torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)
@@ -119,6 +123,8 @@ train_dataset = MNIST(
 )
 
 # Record spikes during the simulation.
+gc.collect()
+torch.cuda.empty_cache()
 spike_record = torch.zeros((update_interval, int(time / dt), n_neurons), device=device)
 
 # Neuron assignments and spike proportions.
@@ -137,7 +143,6 @@ exc_voltage_monitor = Monitor(
 inh_voltage_monitor = Monitor(
     network.layers["Ai"], ["v"], time=int(time / dt), device=device
 )
-
 network.add_monitor(exc_voltage_monitor, name="exc_voltage")
 network.add_monitor(inh_voltage_monitor, name="inh_voltage")
 
@@ -159,7 +164,7 @@ for layer in set(network.layers) - {"X"}:
 inpt_ims, inpt_axes = None, None
 spike_ims, spike_axes = None, None
 weights_im = None
-sy_weights_im = None
+AeAi_weights_im = None
 assigns_im = None
 perf_ax = None
 voltage_axes, voltage_ims = None, None
@@ -172,13 +177,8 @@ for epoch in range(n_epochs):
     labels = []
 
     if epoch % progress_interval == 0:
-
         print("Progress: %d / %d (%.4f seconds)" % (epoch, n_epochs, t() - start))
         start = t()
-
-        print("Number of Ae spikes(p value): %d" % (p))
-        print("Weights tensor between X and Ae: ", network.connections[("X", "Ae")].w)
-        print("Weights tensor between Ae and Ai: ", network.connections[("Ae", "Ai")].w)
 
     # Create a dataloader to iterate and batch data
     dataloader = torch.utils.data.DataLoader(
@@ -240,10 +240,6 @@ for epoch in range(n_epochs):
                 )
             )
 
-            print("Number of input spikes(p value): %d" % (p))
-            print("Weights tensor between X and Ae: ", network.connections[("X", "Ae")].w)
-            print("Weights tensor between Ae and Ai: ", network.connections[("Ae", "Ai")].w)
-
             # Assign labels to excitatory layer neurons.
             assignments, proportions, rates = assign_labels(
                 spikes=spike_record,
@@ -257,7 +253,7 @@ for epoch in range(n_epochs):
         labels.append(batch["label"])
 
         # Run the network on the input.
-        network.run(inputs=inputs, time=time, input_time_dim=1, p = p)
+        network.run(inputs=inputs, time=time, input_time_dim=1, p=p)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -265,7 +261,25 @@ for epoch in range(n_epochs):
 
         # Add to spikes recording.
         spike_record[step % update_interval] = spikes["Ae"].get("s").squeeze()
-        p = torch.sum(spikes["Ae"].get("s").squeeze())
+        Num_Ae_spikes = spikes["Ae"].get("s").squeeze().sum()
+        if Num_Ae_spikes > 0:
+            p = spikes["X"].get("s").squeeze().sum()
+
+        else:
+            p = 0
+
+        '''
+        weight_collections = collections.Counter(network.connections[("X", "Ae")].w.reshape(-1))
+        Wcollects = weight_collections.items()
+        Wcollects = sorted(weight_collections)
+        x, y = zip(*weight_collections)
+
+        plt.plot(x, y)
+        plt.xlabel("weights")
+        plt.ylabel("synapses count")
+        plt.title("Synaptic weight counts")
+        plt.show()
+        '''
 
         # Optionally plot various simulation information.
         if plot:
@@ -276,7 +290,7 @@ for epoch in range(n_epochs):
             square_weights = get_square_weights(
                 input_exc_weights.view(784, n_neurons), n_sqrt, 28
             )
-            synaptic_weights = get_synptic_weights(
+            AeAi_weights = get_AeAi_weights(
                 exc_inh_weights.view(n_neurons, n_neurons), n_sqrt, 30
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
@@ -287,7 +301,7 @@ for epoch in range(n_epochs):
             )
             spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
             weights_im = plot_weights(square_weights, im=weights_im)
-            sy_weights_im = plot_weights(synaptic_weights, im=sy_weights_im)
+            AeAi_weights_im = plot_weights(AeAi_weights, im=AeAi_weights_im)
             assigns_im = plot_assignments(square_assignments, im=assigns_im)
             perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
             voltage_ims, voltage_axes = plot_voltages(
@@ -335,19 +349,24 @@ for step, batch in enumerate(test_dataset):
         inputs = {k: v.cuda() for k, v in inputs.items()}
 
     # Run the network on the input.
-    network.run(inputs=inputs, time=time, input_time_dim=1)
+    p = 0
+    network.run(inputs=inputs, time=time, input_time_dim=1, p=p)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
+    Num_Ae_spikes = spikes["Ae"].get("s").squeeze().long().sum()
+    if Num_Ae_spikes > 0:
+        p = spikes["X"].get("s").squeeze().sum()
+
+    else:
+        p = 0
 
     # Convert the array of labels into a tensor
     label_tensor = torch.tensor(batch["label"], device=device)
 
     # Get network predictions.
     all_activity_pred = all_activity(
-        spikes=spike_record,
-        assignments=assignments,
-        n_labels=n_classes
+        spikes=spike_record, assignments=assignments, n_labels=n_classes
     )
     proportion_pred = proportion_weighting(
         spikes=spike_record,

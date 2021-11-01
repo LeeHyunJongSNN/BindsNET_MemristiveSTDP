@@ -85,7 +85,7 @@ def get_square_weights(
 
     return square_weights
 
-def get_synptic_weights(
+def get_AeAi_weights(
     weights: Tensor, n_sqrt: int, side: Union[int, Tuple[int, int]]
 ) -> Tensor:
     # language=rst
@@ -100,7 +100,7 @@ def get_synptic_weights(
     if isinstance(side, int):
         side = (side, 10)
 
-    synaptic_weights = torch.zeros(side[0] * n_sqrt, side[1] * n_sqrt)
+    AeAi_weights = torch.zeros(side[0] * n_sqrt, side[1] * n_sqrt)
     for i in range(n_sqrt):
         for j in range(n_sqrt):
             n = i * n_sqrt + j
@@ -111,9 +111,9 @@ def get_synptic_weights(
             x = i * side[0]
             y = (j % n_sqrt) * side[1]
             filter_ = weights[:, n].contiguous().view(*side)
-            synaptic_weights[x : x + side[0], y : y + side[1]] = filter_
+            AeAi_weights[x : x + side[0], y : y + side[1]] = filter_
 
-    return synaptic_weights
+    return AeAi_weights
 
 def get_square_assignments(assignments: Tensor, n_sqrt: int) -> Tensor:
     # language=rst

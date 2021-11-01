@@ -171,6 +171,7 @@ def proportion_weighting(
 
     return predictions
 
+
 def ngram(
     spikes: torch.Tensor,
     ngram_scores: Dict[Tuple[int, ...], torch.Tensor],
