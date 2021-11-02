@@ -173,7 +173,6 @@ def plot_spikes(
 
     return ims, axes
 
-
 def plot_weights(
     weights: torch.Tensor,
     wmin: Optional[float] = 0,
@@ -298,7 +297,6 @@ def plot_conv2d_weights(
         im.set_data(reshaped)
 
     return im
-
 
 def plot_locally_connected_weights(
     weights: torch.Tensor,

@@ -1,4 +1,3 @@
-import collections
 import os
 import torch
 import argparse
@@ -25,6 +24,7 @@ from bindsnet.analysis.plotting import (
     plot_performance,
     plot_voltages,
 )
+from bindsnet.analysis.plotting_weights_counts import hist_weights
 
 
 parser = argparse.ArgumentParser()
@@ -37,9 +37,9 @@ parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=120)
 parser.add_argument("--theta_plus", type=float, default=0.05)
-parser.add_argument("--time", type=int, default=45)
+parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=64)
+parser.add_argument("--intensity", type=float, default=256)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=250)
 parser.add_argument("--train", dest="train", action="store_true")
@@ -72,7 +72,7 @@ gpu = args.gpu
 gc.collect()
 torch.cuda.empty_cache()
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 if gpu and torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)
 else:
@@ -125,6 +125,7 @@ train_dataset = MNIST(
 # Record spikes during the simulation.
 gc.collect()
 torch.cuda.empty_cache()
+
 spike_record = torch.zeros((update_interval, int(time / dt), n_neurons), device=device)
 
 # Neuron assignments and spike proportions.
@@ -143,6 +144,7 @@ exc_voltage_monitor = Monitor(
 inh_voltage_monitor = Monitor(
     network.layers["Ai"], ["v"], time=int(time / dt), device=device
 )
+
 network.add_monitor(exc_voltage_monitor, name="exc_voltage")
 network.add_monitor(inh_voltage_monitor, name="inh_voltage")
 
@@ -167,8 +169,10 @@ weights_im = None
 AeAi_weights_im = None
 assigns_im = None
 perf_ax = None
+hist_ax = None
 voltage_axes, voltage_ims = None, None
-p = 0
+pltp, pltd,delta_pltp, delta_pltd = 0, 0, 0, 0
+p = [0,0,0,0]
 
 # Train the network.
 print("\nBegin training.\n")
@@ -177,6 +181,7 @@ for epoch in range(n_epochs):
     labels = []
 
     if epoch % progress_interval == 0:
+
         print("Progress: %d / %d (%.4f seconds)" % (epoch, n_epochs, t() - start))
         start = t()
 
@@ -259,30 +264,57 @@ for epoch in range(n_epochs):
         exc_voltages = exc_voltage_monitor.get("v")
         inh_voltages = inh_voltage_monitor.get("v")
 
+
         # Add to spikes recording.
         spike_record[step % update_interval] = spikes["Ae"].get("s").squeeze()
-        Num_Ae_spikes = spikes["Ae"].get("s").squeeze().sum()
-        if Num_Ae_spikes > 0:
-            p = spikes["X"].get("s").squeeze().sum()
 
-        else:
-            p = 0
+        # Calculate P
+        Ae_spikes = spikes["Ae"].get("s").squeeze().long()
+        Ae_spikes_all = torch.sum(Ae_spikes, axis=0)
+        X_spikes = spikes["X"].get("s").squeeze()
+        X_spikes_all = torch.sum(X_spikes, axis=0).reshape(-1)
+        Ae_index = np.nonzero(Ae_spikes_all)
+        time_count = len(Ae_index)
 
-        '''
-        weight_collections = collections.Counter(network.connections[("X", "Ae")].w.reshape(-1))
-        Wcollects = weight_collections.items()
-        Wcollects = sorted(weight_collections)
-        x, y = zip(*weight_collections)
-
-        plt.plot(x, y)
-        plt.xlabel("weights")
-        plt.ylabel("synapses count")
-        plt.title("Synaptic weight counts")
-        plt.show()
-        '''
+        if Ae_index == []:
+            pltp = 0
+            pltd = 0
+            delta_pltp = pltp / 45
+            delta_pltd = pltd / 45
+        elif  Ae_index[0] < 45:
+            f_idx_bound = torch.where(Ae_index < 45)[0][-1]
+            f_bound = Ae_index[f_idx_bound]
+            pltp = torch.sum(X_spikes_all[0:f_bound[0]])
+            for i in range (f_idx_bound):
+                pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i]+45])
+            for i in range(f_idx_bound, time_count):
+                pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
+                pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i]+45])
+                delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i-1]])) / 45
+                delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i-1]:Ae_index[i-1]+45])) / 45
+        elif Ae_index[0] >= 45 or Ae_index < time - 45:
+            for i in range(time_count):
+                pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
+                pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i]+45])
+                if i==0:
+                    delta_pltp = pltp / 45
+                    delta_pltd = pltd / 45
+                else:
+                    delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])) / 45
+                    delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i-1]:Ae_index[i-1]+45])) / 45
+        elif Ae_index[0] >= time - 45:
+            r_idx_bound = torch.where(Ae_index > time - 45)[0][0]
+            r_bound = Ae_index[r_idx_bound]
+            pltd = torch.sum(X_spikes_all[r_bound[0]:time])
+            for i in range(r_idx_bound, time):
+                pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
+            delta_pltd = (pltd - torch.sum(X_spikes_all[r_bound[0]:time])) / 45
+            delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i-1]]))
 
         # Optionally plot various simulation information.
         if plot:
+            print(" Pulses(pltp, pltd, delta_pltp, delta_pltd:", pltp, pltd, delta_pltp, delta_pltd)
+
             image = batch["image"].view(28, 28)
             inpt = inputs["X"].view(time, 784).sum(0).view(28, 28)
             input_exc_weights = network.connections[("X", "Ae")].w
@@ -307,6 +339,9 @@ for epoch in range(n_epochs):
             voltage_ims, voltage_axes = plot_voltages(
                 voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line"
             )
+
+            weight_collections = network.connections[("X", "Ae")].w.reshape(-1).tolist()
+            hist_ax = hist_weights(weight_collections, ax = hist_ax)
 
             plt.pause(1e-8)
 
@@ -334,6 +369,52 @@ accuracy = {"all": 0, "proportion": 0}
 # Record spikes during the simulation.
 spike_record = torch.zeros((1, int(time / dt), n_neurons), device=device)
 
+# Calculate P
+pltp, pltd,delta_pltp, delta_pltd = 0, 0, 0, 0
+p = [0,0,0,0]
+Ae_spikes = spikes["Ae"].get("s").squeeze().long()
+Ae_spikes_all = torch.sum(Ae_spikes, axis=0)
+X_spikes = spikes["X"].get("s").squeeze()
+X_spikes_all = torch.sum(X_spikes, axis=0).reshape(-1)
+Ae_index = np.nonzero(Ae_spikes_all)
+time_count = len(Ae_index)
+
+if Ae_index == []:
+    pltp = 0
+    pltd = 0
+    delta_pltp = pltp / 45
+    delta_pltd = pltd / 45
+elif Ae_index[0] < 45:
+    f_idx_bound = torch.where(Ae_index < 45)[0][-1]
+    f_bound = Ae_index[f_idx_bound]
+    pltp = torch.sum(X_spikes_all[0:f_bound[0]])
+    for i in range(f_idx_bound):
+        pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i] + 45])
+    for i in range(f_idx_bound, time_count):
+        pltp = torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])
+        pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i] + 45])
+        delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i - 1] - 45:Ae_index[i - 1]])) / 45
+        delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i - 1]:Ae_index[i - 1] + 45])) / 45
+elif Ae_index[0] >= 45 or Ae_index < time - 45:
+    for i in range(time_count):
+        pltp = torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])
+        pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i] + 45])
+        if i == 0:
+            delta_pltp = pltp / 45
+            delta_pltd = pltd / 45
+        else:
+            delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])) / 45
+            delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i - 1]:Ae_index[i - 1] + 45])) / 45
+elif Ae_index[0] >= time - 45:
+    r_idx_bound = torch.where(Ae_index > time - 45)[0][0]
+    r_bound = Ae_index[r_idx_bound]
+    pltd = torch.sum(X_spikes_all[r_bound[0]:time])
+    for i in range(r_idx_bound, time):
+        pltp = torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])
+    delta_pltd = (pltd - torch.sum(X_spikes_all[r_bound[0]:time])) / 45
+    delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i - 1] - 45:Ae_index[i - 1]]))
+
+
 # Train the network.
 print("\nBegin testing\n")
 network.train(mode=False)
@@ -349,24 +430,23 @@ for step, batch in enumerate(test_dataset):
         inputs = {k: v.cuda() for k, v in inputs.items()}
 
     # Run the network on the input.
-    p = 0
     network.run(inputs=inputs, time=time, input_time_dim=1, p=p)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
-    Num_Ae_spikes = spikes["Ae"].get("s").squeeze().long().sum()
-    if Num_Ae_spikes > 0:
-        p = spikes["X"].get("s").squeeze().sum()
 
-    else:
-        p = 0
+    #Calculate P
+    Num_Ae_spikes = spikes["Ae"].get("s").squeeze().long()
+
 
     # Convert the array of labels into a tensor
     label_tensor = torch.tensor(batch["label"], device=device)
 
     # Get network predictions.
     all_activity_pred = all_activity(
-        spikes=spike_record, assignments=assignments, n_labels=n_classes
+        spikes=spike_record,
+        assignments=assignments,
+        n_labels=n_classes
     )
     proportion_pred = proportion_weighting(
         spikes=spike_record,

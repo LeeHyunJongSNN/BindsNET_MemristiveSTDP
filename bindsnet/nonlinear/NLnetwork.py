@@ -60,8 +60,8 @@ class Network(torch.nn.Module):
         network.add_monitor(monitor=M2, name='Y')
 
         # Create Poisson-distributed spike train inputs.
-        data = 15 * torch.rand(100)  # Generate random Poisson rates for 100 input neurons.
-        train = encoding.poisson(datum=data, time=5000)  # Encode input as 5000ms Poisson spike trains.
+        data = 15 * torch.rand(300)  # Generate random Poisson rates for 100 input neurons. -> 300으로 수정 21.10.23 이현종
+        train = encoding.poisson(datum=data, time=500)  # Encode input as 5000ms Poisson spike trains. -> 500ms로 수정 21.10.11 이현종
 
         # Simulate network on generated spike trains.
         inputs = {'X' : train}  # Create inputs mapping.

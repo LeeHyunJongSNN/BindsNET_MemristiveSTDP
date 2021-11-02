@@ -32,7 +32,7 @@ parser.add_argument("--n_clamp", type=int, default=1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=120)
 parser.add_argument("--theta_plus", type=float, default=0.05)
-parser.add_argument("--time", type=int, default=1000)
+parser.add_argument("--time", type=int, default=45)
 parser.add_argument("--dt", type=int, default=1.0)
 parser.add_argument("--intensity", type=float, default=32)
 parser.add_argument("--progress_interval", type=int, default=10)
@@ -65,10 +65,13 @@ gpu = args.gpu
 device_id = args.device_id
 
 # Sets up Gpu use
+
 print("Existence of GPU:", torch.cuda.is_available())
 print("Number of GPUs:", torch.cuda.device_count())
 print("Used GPU's Index:", torch.cuda.current_device())
 print(torch.cuda.get_device_name(0))
+print(torch.cuda.get_device_name(1))
+print(torch.cuda.get_device_name(2))
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if gpu and torch.cuda.is_available():
@@ -163,7 +166,7 @@ p = 0
 
 pbar = tqdm(total=n_train)
 
-print("Number of Ae spikes(p value): %d" % (p))
+print("Number of input spikes(p value): %d" % (p))
 print("Weights tensor between X and Ae: ", network.connections[("X", "Ae")].w)
 print("Weights tensor between Ae and Ai: ", network.connections[("Ae", "Ai")].w)
 
@@ -202,7 +205,7 @@ for (i, datum) in enumerate(dataloader):
             )
         )
 
-        print("Number of Ae spikes(p value): %d" % (p))
+        print("Number of input spikes(p value): %d" % (p))
         print("Weights tensor between X and Ae: ", network.connections[("X", "Ae")].w)
         print("Weights tensor between Ae and Ai: ", network.connections[("Ae", "Ai")].w)
 
@@ -309,16 +312,17 @@ for step, batch in enumerate(test_dataset):
         inputs = {k: v.cuda() for k, v in inputs.items()}
 
     # Run the network on the input.
+    p = 0
     network.run(inputs=inputs, time=time, input_time_dim=1, p=p)
-    Num_Ae_spikes = spikes["Ae"].get("s").squeeze().long().sum()
+
+    # Add to spikes recording.
+    spike_record[0] = spikes["Ae"].get("s").squeeze()
+    Num_Ae_spikes = spikes["Ae"].get("s").squeeze().sum()
     if Num_Ae_spikes > 0:
         p = spikes["X"].get("s").squeeze().sum()
 
     else:
         p = 0
-
-    # Add to spikes recording.
-    spike_record[0] = spikes["Ae"].get("s").squeeze()
 
     # Convert the array of labels into a tensor
     label_tensor = torch.tensor(batch["label"], device=device)

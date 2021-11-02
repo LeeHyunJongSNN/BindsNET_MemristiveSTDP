@@ -211,7 +211,7 @@ class DiehlAndCook2015_NonLinear(Network):
     def __init__(
         self,
         n_inpt: int,
-        n_neurons: int = 300,
+        n_neurons: int = 100,
         exc: float = 22.5,
         inh: float = 17.5,
         dt: float = 1.0,
@@ -298,14 +298,14 @@ class DiehlAndCook2015_NonLinear(Network):
         )
         w = self.exc * torch.diag(torch.ones(self.n_neurons))
         exc_inh_conn = Connection(
-            source=exc_layer, target=inh_layer, w=w, wmin=0, wmax=self.exc #self.exc
+            source=exc_layer, target=inh_layer, w=w, wmin=0, wmax=self.exc
         )
         w = -self.inh * (
             torch.ones(self.n_neurons, self.n_neurons)
             - torch.diag(torch.ones(self.n_neurons))
         )
         inh_exc_conn = Connection(
-            source=inh_layer, target=exc_layer, w=w, wmin=-self.inh, wmax=0 #-self.inh
+            source=inh_layer, target=exc_layer, w=w, wmin=-self.inh, wmax=0
         )
 
         # Add to network

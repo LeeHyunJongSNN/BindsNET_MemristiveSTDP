@@ -37,7 +37,7 @@ parser.add_argument("--update_steps", type=int, default=256)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=120)
 parser.add_argument("--theta_plus", type=float, default=0.05)
-parser.add_argument("--time", type=int, default=100)
+parser.add_argument("--time", type=int, default=45)
 parser.add_argument("--dt", type=int, default=1.0)
 parser.add_argument("--intensity", type=float, default=128)
 parser.add_argument("--progress_interval", type=int, default=10)
@@ -73,10 +73,13 @@ update_interval = update_steps * batch_size
 device = "cpu"
 
 # Sets up Gpu use
+
 print("Existence of GPU:", torch.cuda.is_available())
 print("Number of GPUs:", torch.cuda.device_count())
 print("Used GPU's Index:", torch.cuda.current_device())
 print(torch.cuda.get_device_name(0))
+print(torch.cuda.get_device_name(1))
+print(torch.cuda.get_device_name(2))
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if gpu and torch.cuda.is_available():
@@ -253,7 +256,7 @@ for epoch in range(n_epochs):
                 )
             )
 
-            print("Number of Ae spikes(p value): %d" % (p))
+            print("Number of input spikes(p value): %d" % (p))
             print("Weights tensor between X and Ae: ", network.connections[("X", "Ae")].w)
             print("Weights tensor between Ae and Ai: ", network.connections[("Ae", "Ai")].w)
 
@@ -280,7 +283,7 @@ for epoch in range(n_epochs):
             + s.size(0)
         ] = s
 
-        Num_Ae_spikes = spikes["Ae"].get("s").squeeze().long().sum()
+        Num_Ae_spikes = spikes["Ae"].get("s").squeeze().sum()
         if Num_Ae_spikes > 0:
             p = spikes["X"].get("s").squeeze().sum()
 

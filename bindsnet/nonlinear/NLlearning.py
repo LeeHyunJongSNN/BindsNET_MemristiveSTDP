@@ -9,7 +9,7 @@ import numpy as np
 from ..network.monitors import Monitor, NetworkMonitor, AbstractMonitor
 from ..encoding.encodings import poisson
 from ..network.nodes import SRM0Nodes, Input, LIFNodes
-from ..network.topology import (
+from ..nonlinear.NLtopology import (
     AbstractConnection,
     Connection,
     Conv2dConnection,
@@ -89,7 +89,7 @@ class LearningRule(ABC):
 
         # Bound weights.
         if (
-            self.connection.wmin != 0 or self.connection.wmax != 1.0 # self.connection.wmin != -np.inf or self.connection.wmax != np.inf
+            self.connection.wmin != 0.0 or self.connection.wmax != 1.0 # -np.inf, np.inf
         ) and not isinstance(self, NoOp):
             self.connection.w.clamp_(self.connection.wmin, self.connection.wmax)
 
@@ -302,40 +302,37 @@ class NonLinear(LearningRule):
         """
         batch_size = self.source.batch_size
 
-        # Modified stdp rule.
+        # Modified stdp rule.(논문의 수식을 반영하고 있는 부분)
         vltp = 10.0
         vltd = 10.0
         gmax = 1.0
         gmin = 0.0
-        g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
-        g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
+        altp = (gmax - gmin) / (1.0 - e ** (-vltp))
+        altd = (gmax - gmin) / (1.0 - e ** (-vltd))
         plist = list(kwargs.values())
-        pltp = plist[3][0]
-        pltd = plist[3][1]
-        delta_pltp = plist[3][2] / 256
-        delta_pltd = plist[3][3] / 256
+        p = plist[3]
         b = 4.0
-        delta_wltp = g1ltp * vltp * b / 256.0 * np.exp(-vltp * b * pltp / 256.0)
-        delta_wltd = g1ltd * vltd / 256.0 * np.exp(-vltd * (1.0 - pltd / 256.0))
-        # delta_wltp = (-self.connection.w + g1ltp + gmin) * (1 - np.exp(-vltp * 4 * delta_pltp))
-        # delta_wltd = -(self.connection.w + g1ltd + gmax) * (1 - np.exp(vltd * delta_pltd))
+        # wltp = gmin + altp * (1.0 - e ** (vltp * b * p / 256.0))
+        # wltd = gmax - altd * (1.0 - e ** (-vltd * (1.0 - p / 256.0)))
+        prime_wltp = -altp * vltp * b / 256.0 * e ** (vltp * b * p / 256.0)
+        prime_wltd = altd * vltd / 256.0 * e ** (-vltd * (1.0 - p / 256.0))
+        # delta_wltp = (altp + gmin - wltp) * (1 - e ** (- vltp * prime_wltp / (gmax - gmin)))
+        # delta_wltd = -(wltd + altd - gmax) * (1 - e ** (vltd * prime_wltd / (gmax - gmin)))
 
         # Pre-synaptic update.
         if self.nu[0]:
-            # self.connection.w += delta_wltd
             source_s = self.source.s.view(batch_size, -1).unsqueeze(2).float()
             target_x = self.target.x.view(batch_size, -1).unsqueeze(1) * self.nu[0]
             update = self.reduction(torch.bmm(source_s, target_x), dim=0)
-            self.connection.w += update * delta_wltd
+            self.connection.w += update * prime_wltd
             del source_s, target_x
 
         # Post-synaptic update.
         if self.nu[1]:
-            # self.connection.w += delta_wltp
             target_s = (self.target.s.view(batch_size, -1).unsqueeze(1).float() * self.nu[1])
             source_x = self.source.x.view(batch_size, -1).unsqueeze(2)
             update = self.reduction(torch.bmm(source_x, target_s), dim=0)
-            self.connection.w += update * delta_wltp
+            self.connection.w += update * prime_wltp
             del source_x, target_s
 
         super().update()
@@ -351,20 +348,21 @@ class NonLinear(LearningRule):
         padding, stride = self.connection.padding, self.connection.stride
         batch_size = self.source.batch_size
 
-        # Modified stdp rule.
+        # Modified stdp rule.(논문의 수식을 반영하고 있는 부분)
         vltp = 10.0
         vltd = 10.0
         gmax = 1.0
         gmin = 0.0
-        g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
-        g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
-        plist = list(kwargs.values())
-        pltp = plist[3][0]
-        pltd = plist[3][1]
-        delta_p = plist[3][2]
+        altp = (gmax - gmin) / (1.0 - e ** (-vltp))
+        altd = (gmax - gmin) / (1.0 - e ** (-vltd))
+        p = kwargs
         b = 4.0
-        delta_wltp = (-self.connection.w + g1ltp + gmin) * (1 - np.exp(-vltp * delta_p))
-        delta_wltd = -(self.connection.w + g1ltd + gmax) * (1 - np.exp(vltd * delta_p))
+        # wltp = gmin + altp * (1.0 - e ** (vltp * b * p / 256.0))
+        # wltd = gmax - altd * (1.0 - e ** (-vltd * (1.0 - p / 256.0)))
+        prime_wltp = -altp * vltp * b / 256.0 * e ** (vltp * b * p / 256.0)
+        prime_wltd = altd * vltd / 256.0 * e ** (-vltd * (1.0 - p / 256.0))
+        # delta_wltp = (altp + gmin - wltp) * (1 - e ** (- vltp * prime_wltp / (gmax - gmin)))
+        # delta_wltd = -(wltd + altd - gmax) * (1 - e ** (vltd * prime_wltd / (gmax - gmin)))
 
         # Reshaping spike traces and spike occurrences.
         source_x = im2col_indices(
