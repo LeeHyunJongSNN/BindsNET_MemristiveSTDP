@@ -123,9 +123,6 @@ train_dataset = MNIST(
 )
 
 # Record spikes during the simulation.
-gc.collect()
-torch.cuda.empty_cache()
-
 spike_record = torch.zeros((update_interval, int(time / dt), n_neurons), device=device)
 
 # Neuron assignments and spike proportions.
@@ -291,7 +288,7 @@ for epoch in range(n_epochs):
                 pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
                 pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i]+45])
                 delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i-1]])) / 45
-                delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i-1]:Ae_index[i-1]+45])) / 45
+                delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i-1]:Ae_index[i-1] + 45])) / 45
         elif Ae_index[0] >= 45 or Ae_index < time - 45:
             for i in range(time_count):
                 pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
@@ -310,7 +307,7 @@ for epoch in range(n_epochs):
                 pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
                 delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i-1]]))
             delta_pltd = (pltd - torch.sum(X_spikes_all[r_bound[0]:time])) / 45
-        
+
         # Optionally plot various simulation information.
         if plot:
             print(" Pulses(pltp, pltd, delta_pltp, delta_pltd:", pltp, pltd, delta_pltp, delta_pltd)
@@ -393,8 +390,8 @@ elif Ae_index[0] < 45:
     for i in range(f_idx_bound, time_count):
         pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
         pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i]+45])
-        delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45 : Ae_index[i-1]])) / 45
-        delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i-1] : Ae_index[i-1]+45])) / 45
+        delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i-1]])) / 45
+        delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i-1]:Ae_index[i-1]+45])) / 45
 elif Ae_index[0] >= 45 or Ae_index < time - 45:
     for i in range(time_count):
         pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
@@ -411,7 +408,7 @@ elif Ae_index[0] >= time - 45:
     pltd = torch.sum(X_spikes_all[r_bound[0]:time])
     for i in range(r_idx_bound, time):
         pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
-        delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i - 1]]))
+        delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i-1]]))
     delta_pltd = (pltd - torch.sum(X_spikes_all[r_bound[0]:time])) / 45
 
 # Train the network.
