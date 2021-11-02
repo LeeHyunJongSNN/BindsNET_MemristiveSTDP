@@ -300,7 +300,7 @@ for epoch in range(n_epochs):
                     delta_pltp = pltp / 45
                     delta_pltd = pltd / 45
                 else:
-                    delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])) / 45
+                    delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])) / 45
                     delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i-1]:Ae_index[i-1]+45])) / 45
         elif Ae_index[0] >= time - 45:
             r_idx_bound = torch.where(Ae_index > time - 45)[0][0]
@@ -308,9 +308,9 @@ for epoch in range(n_epochs):
             pltd = torch.sum(X_spikes_all[r_bound[0]:time])
             for i in range(r_idx_bound, time):
                 pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
+                delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i-1]]))
             delta_pltd = (pltd - torch.sum(X_spikes_all[r_bound[0]:time])) / 45
-            delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i-1]]))
-
+        
         # Optionally plot various simulation information.
         if plot:
             print(" Pulses(pltp, pltd, delta_pltp, delta_pltd:", pltp, pltd, delta_pltp, delta_pltd)
@@ -389,31 +389,30 @@ elif Ae_index[0] < 45:
     f_bound = Ae_index[f_idx_bound]
     pltp = torch.sum(X_spikes_all[0:f_bound[0]])
     for i in range(f_idx_bound):
-        pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i] + 45])
+        pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i]+45])
     for i in range(f_idx_bound, time_count):
-        pltp = torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])
-        pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i] + 45])
-        delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i - 1] - 45:Ae_index[i - 1]])) / 45
-        delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i - 1]:Ae_index[i - 1] + 45])) / 45
+        pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
+        pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i]+45])
+        delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45 : Ae_index[i-1]])) / 45
+        delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i-1] : Ae_index[i-1]+45])) / 45
 elif Ae_index[0] >= 45 or Ae_index < time - 45:
     for i in range(time_count):
-        pltp = torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])
-        pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i] + 45])
+        pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
+        pltd = torch.sum(X_spikes_all[Ae_index[i]:Ae_index[i]+45])
         if i == 0:
             delta_pltp = pltp / 45
             delta_pltd = pltd / 45
         else:
-            delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])) / 45
-            delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i - 1]:Ae_index[i - 1] + 45])) / 45
+            delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])) / 45
+            delta_pltd = (pltd - torch.sum(X_spikes_all[Ae_index[i-1]:Ae_index[i-1]+45])) / 45
 elif Ae_index[0] >= time - 45:
     r_idx_bound = torch.where(Ae_index > time - 45)[0][0]
     r_bound = Ae_index[r_idx_bound]
     pltd = torch.sum(X_spikes_all[r_bound[0]:time])
     for i in range(r_idx_bound, time):
-        pltp = torch.sum(X_spikes_all[Ae_index[i] - 45:Ae_index[i]])
+        pltp = torch.sum(X_spikes_all[Ae_index[i]-45:Ae_index[i]])
+        delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i-1]-45:Ae_index[i - 1]]))
     delta_pltd = (pltd - torch.sum(X_spikes_all[r_bound[0]:time])) / 45
-    delta_pltp = (pltp - torch.sum(X_spikes_all[Ae_index[i - 1] - 45:Ae_index[i - 1]]))
-
 
 # Train the network.
 print("\nBegin testing\n")
@@ -434,10 +433,6 @@ for step, batch in enumerate(test_dataset):
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
-
-    #Calculate P
-    Num_Ae_spikes = spikes["Ae"].get("s").squeeze().long()
-
 
     # Convert the array of labels into a tensor
     label_tensor = torch.tensor(batch["label"], device=device)
