@@ -15,7 +15,7 @@ from bindsnet.encoding import PoissonEncoder
 from bindsnet.nonlinear.NLmodels import DiehlAndCook2015_NonLinear
 from bindsnet.nonlinear.NLlearning import NonLinear
 from bindsnet.network.monitors import Monitor
-from bindsnet.utils import get_square_weights, get_square_assignments, get_AeAi_weights
+from bindsnet.utils import get_square_weights, get_square_assignments
 from bindsnet.evaluation import all_activity, proportion_weighting, assign_labels
 from bindsnet.analysis.plotting import (
     plot_input,
@@ -164,7 +164,6 @@ for layer in set(network.layers) - {"X"}:
 inpt_ims, inpt_axes = None, None
 spike_ims, spike_axes = None, None
 weights_im = None
-AeAi_weights_im = None
 assigns_im = None
 perf_ax = None
 hist_ax = None
@@ -254,7 +253,9 @@ for epoch in range(n_epochs):
         labels.append(batch["label"])
 
         # Run the network on the input.
-        network.run(inputs=inputs, time=time, input_time_dim=1)
+        s_record = []
+        t_record = []
+        network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -268,12 +269,8 @@ for epoch in range(n_epochs):
             image = batch["image"].view(28, 28)
             inpt = inputs["X"].view(time, 784).sum(0).view(28, 28)
             input_exc_weights = network.connections[("X", "Ae")].w
-            exc_inh_weights = network.connections[("Ae", "Ai")].w
             square_weights = get_square_weights(
                 input_exc_weights.view(784, n_neurons), n_sqrt, 28
-            )
-            AeAi_weights = get_AeAi_weights(
-                exc_inh_weights.view(n_neurons, n_neurons), n_sqrt, 30
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
@@ -283,7 +280,6 @@ for epoch in range(n_epochs):
             )
             spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
             weights_im = plot_weights(square_weights, im=weights_im)
-            AeAi_weights_im = plot_weights(AeAi_weights, im=AeAi_weights_im)
             assigns_im = plot_assignments(square_assignments, im=assigns_im)
             perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
             voltage_ims, voltage_axes = plot_voltages(
