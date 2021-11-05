@@ -44,7 +44,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.1)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=65536) #2^16
+parser.add_argument("--intensity", type=float, default=256) #256(2^8)~65536(2^16)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
 parser.add_argument("--train", dest="train", action="store_true")
@@ -120,7 +120,7 @@ for fname in [  # "00166cab6b88",
     #        "d073d5018308",
     #        "ec1a5979f489",
     #        "ec1a59832811",
-    "labeled_mix60000.txt"]:
+    "sine+square-1Hz-10-amplitude-18dB-100000.txt"]:
     #fname = "" % tracied
     print(fname)
 
@@ -157,7 +157,7 @@ for fname in [  # "00166cab6b88",
     f.close()
     print(n_attack, n_benign)
 
-train_data, test_data, temp, temp1 = train_test_split(wave_data, wave_data, test_size=0.25)
+train_data, test_data, temp, temp1 = train_test_split(wave_data, wave_data, test_size=0.1)
 
 n_classes = (np.unique(classes)).size
 
@@ -350,7 +350,6 @@ print("Training complete.\n")
 
 # Sequence of accuracy estimates.
 accuracy = {"all": 0, "proportion": 0}
-confusion_matrix = {"CosCos": 0, "CosSaw": 0, "CosSqr": 0, "SawSaw": 0, "SawCos": 0, "SawSqr": 0, "SqrSqr": 0, "SqrCos": 0, "SqrSaw": 0}
 
 # Record spikes during the simulation.
 spike_record = torch.zeros((update_interval, int(time / dt), n_neurons), device=device)
@@ -401,52 +400,12 @@ for step, batch in enumerate(test_data):
         torch.sum(label_tensor.long() == proportion_pred).item()
     )
 
-    Cos_tensor = torch.zeros(label_tensor.long().shape).long()
-    Saw_tensor = torch.ones(label_tensor.long().shape).long()
-    Sqr_tensor = torch.zeros(label_tensor.long().shape).long() + 2
-
-    CosCos = float(torch.sum((all_activity_pred == Cos_tensor) & (label_tensor.long() == Cos_tensor)).item())
-    CosSaw = float(torch.sum((all_activity_pred == Saw_tensor) & (label_tensor.long() == Cos_tensor)).item())
-    CosSqr = float(torch.sum((all_activity_pred == Sqr_tensor) & (label_tensor.long() == Cos_tensor)).item())
-
-    SawSaw = float(torch.sum((all_activity_pred == Saw_tensor) & (label_tensor.long() == Saw_tensor)).item())
-    SawCos = float(torch.sum((all_activity_pred == Cos_tensor) & (label_tensor.long() == Saw_tensor)).item())
-    SawSqr = float(torch.sum((all_activity_pred == Sqr_tensor) & (label_tensor.long() == Saw_tensor)).item())
-
-    SqrSqr = float(torch.sum((all_activity_pred == Sqr_tensor) & (label_tensor.long() == Sqr_tensor)).item())
-    SqrCos = float(torch.sum((all_activity_pred == Cos_tensor) & (label_tensor.long() == Sqr_tensor)).item())
-    SqrSaw = float(torch.sum((all_activity_pred == Saw_tensor) & (label_tensor.long() == Sqr_tensor)).item())
-
-    confusion_matrix["CosCos"] += CosCos
-    confusion_matrix["CosSaw"] += CosSaw
-    confusion_matrix["CosSqr"] += CosSqr
-    confusion_matrix["SawSaw"] += SawSaw
-    confusion_matrix["SawCos"] += SawCos
-    confusion_matrix["SqrSqr"] += SawSqr
-    confusion_matrix["SqrSqr"] += SqrSqr
-    confusion_matrix["SqrCos"] += SqrCos
-    confusion_matrix["SqrSaw"] += SqrSaw
-
-    print(all_activity_pred, all_activity_pred == Cos_tensor)
-    print(all_activity_pred, all_activity_pred == Saw_tensor)
-    print(all_activity_pred, all_activity_pred == Sqr_tensor)
-    print(label_tensor.long(), label_tensor.long() == Cos_tensor)
-    print(label_tensor.long(), label_tensor.long() == Saw_tensor)
-    print(label_tensor.long(), label_tensor.long() == Sqr_tensor)
-
-    print(CosCos, CosSaw, CosSqr, SawSaw, SawCos, SawSqr, SqrSqr, SqrCos, SqrSaw)
-
-    network.reset_state_variables()  # Reset state variables.
-    pbar.set_description_str("Test progress: ")
-    pbar.update()
+network.reset_state_variables()  # Reset state variables.
+pbar.set_description_str("Test progress: ")
+pbar.update()
 
 print("\nAll activity accuracy: %.2f" % (accuracy["all"] / n_test * 100))
 print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test * 100))
-
-print("CosCos: ", confusion_matrix["CosCos"])
-print("SawSaw: ", confusion_matrix["SawSaw"])
-print("SqrSqr: ", confusion_matrix["SqrSqr"])
-print(confusion_matrix)
 
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Testing complete.\n")
