@@ -324,6 +324,129 @@ class NonLinear(LearningRule):
         target_r = torch.tensor(t_record)
 
         update_index_and_time = torch.nonzero(target_r)
+        update_time_index = 0
+        update_index_num = 0
+        Ae_stdp_time = 0
+        Ae_stdp_all_time = 0
+        Ae_stdp_index = 0
+        Ae_stdp_all_index = 0
+
+        time = len(source_r)
+        pulse_time = 45
+        simulation_time = 500
+
+        if torch.numel(update_index_and_time) == 0:
+            self.connection.w = self.connection.w
+
+        elif torch.numel(update_index_and_time) != 0:
+            update_time_index = len(update_index_and_time) - 1
+            Ae_stdp_time = update_index_and_time[update_time_index, 0] # latest update time
+            Ae_stdp_index = update_index_and_time[update_time_index, 1]
+
+            if Ae_stdp_time < pulse_time:
+                if torch.sum(target_r[0:Ae_stdp_time]) > 0:  # LTP
+                    for j in range(X_size):
+                        index_weight = self.connection.w[j, Ae_stdp_index.item()]
+                        index_weight += (-index_weight + g1ltp + gmin) * (1 - np.exp(-vltp * b / 256))
+                        self.connection.w[j, Ae_stdp_index.item()] = index_weight
+                elif torch.sum(target_r[0:Ae_stdp_time]) == 0:
+                    for j in range(X_size):
+                        self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
+
+            elif Ae_stdp_time >= pulse_time and Ae_stdp_time < 2 * pulse_time:
+                if torch.numel(update_index_and_time) != 0:
+                    if torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) > 0:  # LTP
+                        for j in range(X_size):
+                            index_weight = self.connection.w[j, Ae_stdp_index.item()]
+                            index_weight += (-index_weight + g1ltp + gmin) * (1 - np.exp(-vltp * b / 256))
+                            self.connection.w[j, Ae_stdp_index.item()] = index_weight
+                    elif torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) == 0:
+                        for j in range(X_size):
+                            self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
+
+            elif Ae_stdp_time >= 2 * pulse_time:
+                if torch.numel(update_index_and_time) != 0:
+                    if Ae_stdp_time + pulse_time <= time:
+                        if torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) > 0:  # LTP
+                            for j in range(X_size):
+                                index_weight = self.connection.w[j, Ae_stdp_index.item()]
+                                index_weight += (-index_weight + g1ltp + gmin) * (1 - np.exp(-vltp * b / 256))
+                                self.connection.w[j, Ae_stdp_index.item()] = index_weight
+                        elif torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) == 0:
+                            for j in range(X_size):
+                                self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
+
+                    elif Ae_stdp_time + pulse_time > time:
+                        if torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) > 0:  # LTP
+                            for j in range(X_size):
+                                index_weight = self.connection.w[j, Ae_stdp_index.item()]
+                                index_weight += (-index_weight + g1ltp + gmin) * (1 - np.exp(-vltp * b / 256))
+                                self.connection.w[j, Ae_stdp_index.item()] = index_weight
+                        elif torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) == 0:
+                            for j in range(X_size):
+                                self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
+
+            if time == simulation_time: # LTD calculation with spike records
+                update_time_index = len(update_index_and_time)
+                for i in range(update_time_index):
+                    Ae_stdp_all_time = update_index_and_time[i, 0]
+                    Ae_stdp_all_index = update_index_and_time[i, 1]
+                    if Ae_stdp_all_time + pulse_time <= time:
+                        if torch.sum(target_r[Ae_stdp_all_time:Ae_stdp_all_time+pulse_time]) > 0:
+                            for j in range(X_size):
+                                index_weight = self.connection.w[j, Ae_stdp_all_index.item()].item()
+                                index_weight -= (index_weight + g1ltd - gmax) * (1 - np.exp(vltd / 256))
+                                self.connection.w[j, Ae_stdp_all_index.item()] = index_weight
+                        elif torch.sum(target_r[Ae_stdp_all_time:Ae_stdp_all_time+pulse_time]) == 0:
+                            for j in range(X_size):
+                                 self.connection.w[j, Ae_stdp_all_index] = self.connection.w[j, Ae_stdp_all_index]
+
+                    elif Ae_stdp_time + pulse_time > time:
+                        if torch.sum(target_r[Ae_stdp_all_time:time]) > 0:
+                            for j in range(X_size):
+                                index_weight = self.connection.w[j, Ae_stdp_all_index.item()].item()
+                                index_weight -= (index_weight + g1ltd - gmax) * (1 - np.exp(vltd / 256))
+                                self.connection.w[j, Ae_stdp_all_index.item()] = index_weight
+                        elif torch.sum(target_r[Ae_stdp_all_time:time]) == 0:
+                            for j in range(X_size):
+                                 self.connection.w[j, Ae_stdp_all_index] = self.connection.w[j, Ae_stdp_all_index]
+
+        super().update()
+
+    def _conv2d_connection_update(self, **kwargs) -> None:
+        # language=rst
+        """
+        Post-pre learning rule for ``Conv2dConnection`` subclass of
+        ``AbstractConnection`` class.
+        """
+        # Get convolutional layer parameters.
+        out_channels, _, kernel_height, kernel_width = self.connection.w.size()
+        padding, stride = self.connection.padding, self.connection.stride
+        batch_size = self.source.batch_size
+
+        # Modified stdp rule.
+        vltp = 10.0
+        vltd = 10.0
+        gmax = 1.0
+        gmin = 0.0
+        g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
+        g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
+        b = 4.0
+
+        # calculate LTP, LTD cases.
+        source_s = self.source.s.view(-1).long()
+        target_s = self.target.s.view(-1).long()
+        X_size = torch.numel(source_s)
+        Ae_size = torch.numel(target_s)
+
+        s_record = kwargs.get('s_record', [])
+        t_record = kwargs.get('t_record', [])
+        s_record.append(source_s.tolist())
+        t_record.append(target_s.tolist())
+        source_r = torch.tensor(s_record)
+        target_r = torch.tensor(t_record)
+
+        update_index_and_time = torch.nonzero(target_r)
         time_bound_index = 0
         update_time_index = 0
         Ae_stdp_time = 0
@@ -416,141 +539,6 @@ class NonLinear(LearningRule):
                         elif torch.sum(target_r[Ae_stdp_time:time]) == 0:
                             for j in range(X_size):
                                 self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
-
-        super().update()
-
-    def _conv2d_connection_update(self, **kwargs) -> None:
-        # language=rst
-        """
-        Post-pre learning rule for ``Conv2dConnection`` subclass of
-        ``AbstractConnection`` class.
-        """
-        # Get convolutional layer parameters.
-        out_channels, _, kernel_height, kernel_width = self.connection.w.size()
-        padding, stride = self.connection.padding, self.connection.stride
-        batch_size = self.source.batch_size
-
-        # Modified stdp rule.
-        vltp = 10.0
-        vltd = 10.0
-        gmax = 1.0
-        gmin = 0.0
-        g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
-        g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
-        b = 4.0
-
-        # calculate LTP, LTD cases.
-        source_s = self.source.s.view(-1).long()
-        target_s = self.target.s.view(-1).long()
-        X_size = torch.numel(source_s)
-        Ae_size = torch.numel(target_s)
-
-        s_record = kwargs.get('s_record', [])
-        t_record = kwargs.get('t_record', [])
-        s_record.append(source_s.tolist())
-        t_record.append(target_s.tolist())
-        source_r = torch.tensor(s_record)
-        target_r = torch.tensor(t_record)
-
-        update_index_and_time = torch.nonzero(target_r)
-        time_bound_index = 0
-        update_time_index = 0
-
-        time = len(source_r)
-        pulse_time = 45
-
-        if time < pulse_time:
-            if torch.numel(update_index_and_time) != 0:
-                update_time_index = len(update_index_and_time)
-            for i in range(update_time_index):
-                Ae_stdp_time = update_index_and_time[i, 0]
-                Ae_stdp_index = update_index_and_time[i, 1]
-
-                if torch.sum(target_r[0:Ae_stdp_time]) > 0:  # LTP
-                    for j in range(X_size):
-                        index_weight = self.connection.w[j, Ae_stdp_index.item()]
-                        index_weight += (-index_weight + g1ltp + gmin) * (1 - np.exp(-vltp * b / 256))
-                        self.connection.w[j, Ae_stdp_index.item()] = index_weight
-                elif torch.sum(target_r[0:Ae_stdp_time]) == 0:
-                    for j in range(X_size):
-                        self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
-
-                elif torch.sum(target_r[Ae_stdp_time:time]) > 0:  # LTD
-                    for j in range(X_size):
-                        index_weight = self.connection.w[j, Ae_stdp_index.item()].item()
-                        index_weight -= (index_weight + g1ltd - gmax) * (1 - np.exp(vltd / 256))
-                        self.connection.w[j, Ae_stdp_index.item()] = index_weight
-                elif torch.sum(target_r[Ae_stdp_time:time]) == 0:
-                    for j in range(X_size):
-                        self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
-
-        elif time >= pulse_time or time < 2 * pulse_time:
-            update_time_index = len(update_index_and_time)
-            for i in range(update_time_index):
-                Ae_stdp_time = update_index_and_time[i, 0]
-                Ae_stdp_index = update_index_and_time[i, 1]
-
-                if torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) > 0:  # LTP
-                    for j in range(X_size):
-                        index_weight = self.connection.w[j, Ae_stdp_index.item()]
-                        index_weight += (-index_weight + g1ltp + gmin) * (1 - np.exp(-vltp * b / 256))
-                        self.connection.w[j, Ae_stdp_index.item()] = index_weight
-                elif torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) == 0:
-                    for j in range(X_size):
-                        self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
-
-                elif torch.sum(target_r[Ae_stdp_time:time]) > 0:  # LTD
-                    for j in range(X_size):
-                        index_weight = self.connection.w[j, Ae_stdp_index.item()].item()
-                        index_weight -= (index_weight + g1ltd - gmax) * (1 - np.exp(vltd / 256))
-                        self.connection.w[j, Ae_stdp_index.item()] = index_weight
-                elif torch.sum(target_r[Ae_stdp_time:time]) == 0:
-                    for j in range(X_size):
-                        self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
-
-
-        elif time >= 2 * pulse_time:
-            update_time_index = len(update_index_and_time)
-            for i in range(update_time_index):
-                Ae_stdp_time = update_index_and_time[i, 0]
-                Ae_stdp_index = update_index_and_time[i, 1]
-                if Ae_stdp_time + pulse_time <= time:
-                    if torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) > 0:  # LTP
-                        for j in range(X_size):
-                            index_weight = self.connection.w[j, Ae_stdp_index.item()]
-                            index_weight += (-index_weight + g1ltp + gmin) * (1 - np.exp(-vltp * b / 256))
-                            self.connection.w[j, Ae_stdp_index.item()] = index_weight
-                    elif torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) == 0:
-                        for j in range(X_size):
-                            self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
-
-                    elif torch.sum(target_r[Ae_stdp_time:Ae_stdp_time + pulse_time]) > 0:  # LTD
-                        for j in range(X_size):
-                            index_weight = self.connection.w[j, Ae_stdp_index.item()].item()
-                            index_weight -= (index_weight + g1ltd - gmax) * (1 - np.exp(vltd / 256))
-                            self.connection.w[j, Ae_stdp_index.item()] = index_weight
-                    elif torch.sum(target_r[Ae_stdp_time:Ae_stdp_time + pulse_time]) == 0:
-                        for j in range(X_size):
-                            self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
-
-                elif Ae_stdp_time + pulse_time > time:
-                    if torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) > 0:  # LTP
-                        for j in range(X_size):
-                            index_weight = self.connection.w[j, Ae_stdp_index.item()]
-                            index_weight += (-index_weight + g1ltp + gmin) * (1 - np.exp(-vltp * b / 256))
-                            self.connection.w[j, Ae_stdp_index.item()] = index_weight
-                    elif torch.sum(target_r[Ae_stdp_time - pulse_time:Ae_stdp_time]) == 0:
-                        for j in range(X_size):
-                            self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
-
-                    elif torch.sum(target_r[Ae_stdp_time:time]) > 0:  # LTD
-                        for j in range(X_size):
-                            index_weight = self.connection.w[j, Ae_stdp_index.item()].item()
-                            index_weight -= (index_weight + g1ltd - gmax) * (1 - np.exp(vltd / 256))
-                            self.connection.w[j, Ae_stdp_index.item()] = index_weight
-                    elif torch.sum(target_r[Ae_stdp_time:time]) == 0:
-                        for j in range(X_size):
-                            self.connection.w[j, Ae_stdp_index] = self.connection.w[j, Ae_stdp_index]
 
         # Reshaping spike traces and spike occurrences.
         source_x = im2col_indices(
