@@ -12,7 +12,6 @@ from ..nonlinear.NLnetwork import Network
 from ..network.nodes import Input, LIFNodes, DiehlAndCookNodes, AdaptiveLIFNodes
 from ..nonlinear.NLtopology import Connection, LocalConnection
 
-
 class TwoLayerNetwork(Network):
     # language=rst
     """
