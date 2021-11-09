@@ -155,12 +155,12 @@ class Connection(AbstractConnection):
 
         w = kwargs.get("w", None)
         if w is None:
-            if self.wmin == 0.0 or self.wmax == 1.0:
+            if self.wmin == -np.inf or self.wmax == np.inf:
                 w = torch.clamp(torch.rand(source.n, target.n), self.wmin, self.wmax)
             else:
                 w = self.wmin + torch.rand(source.n, target.n) * (self.wmax - self.wmin)
         else:
-            if self.wmin != 0.0 or self.wmax != 1.0:
+            if self.wmin != -np.inf or self.wmax != np.inf:
                 w = torch.clamp(torch.as_tensor(w), self.wmin, self.wmax)
 
         self.w = Parameter(w, requires_grad=False)

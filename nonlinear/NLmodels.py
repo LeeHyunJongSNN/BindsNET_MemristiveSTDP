@@ -147,8 +147,8 @@ class DiehlAndCook2015(Network):
         exc_layer = DiehlAndCookNodes(
             n=self.n_neurons,
             traces=True,
-            rest=-65.0,
-            reset=-60.0,
+            rest=-60.0,
+            reset=-65.0,
             thresh=-52.0,
             refrac=5,
             tc_decay=100.0,
@@ -226,7 +226,7 @@ class DiehlAndCook2015_NonLinear(Network):
     ) -> None:
         # language=rst
         """
-        Constructor for class ``DiehlAndCook2015``.
+        Constructor for class ``DiehlAndCook2015_Nonlinear``.
 
         :param n_inpt: Number of input neurons. Matches the 1D size of the input data.
         :param n_neurons: Number of excitatory, inhibitory neurons.
@@ -264,9 +264,9 @@ class DiehlAndCook2015_NonLinear(Network):
         exc_layer = DiehlAndCookNodes(
             n=self.n_neurons,
             traces=True,
-            rest=-65.0,
+            rest=-60.00, # -65.0
             reset=-60.0,
-            thresh=-52.0,
+            thresh=-60.0, # -52.0
             refrac=5,
             tc_decay=100.0,
             tc_trace=20.0,
@@ -276,9 +276,9 @@ class DiehlAndCook2015_NonLinear(Network):
         inh_layer = LIFNodes(
             n=self.n_neurons,
             traces=False,
-            rest=-60.0,
+            rest=-60.0, # -60.0
             reset=-45.0,
-            thresh=-40.0,
+            thresh=-40.0, # -40.0
             tc_decay=10.0,
             refrac=2,
             tc_trace=20.0,
