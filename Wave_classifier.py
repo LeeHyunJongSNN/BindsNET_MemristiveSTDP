@@ -15,7 +15,7 @@ from bindsnet.encoding import PoissonEncoder
 from bindsnet.nonlinear.NLmodels import DiehlAndCook2015_NonLinear
 from bindsnet.nonlinear.NLlearning import NonLinear
 from bindsnet.network.monitors import Monitor
-from bindsnet.utils import get_square_weights, get_square_assignments
+from bindsnet.utils import get_square_assignments
 from bindsnet.evaluation import (
     all_activity,
     proportion_weighting,
@@ -37,16 +37,16 @@ parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--n_neurons", type=int, default=3)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=1)
-parser.add_argument("--n_train", type=int, default=60000)
+parser.add_argument("--n_train", type=int, default=200)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.1)
+parser.add_argument("--theta_plus", type=float, default=0.1) # 0.1
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=256) #256(2^8)~65536(2^16)
+parser.add_argument("--intensity", type=float, default=6000) # 256(2^8)~65536(2^16), 512, 6000, 45000 optimization
 parser.add_argument("--progress_interval", type=int, default=10)
-parser.add_argument("--update_interval", type=int, default=1)
+parser.add_argument("--update_interval", type=int, default=10)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -97,7 +97,6 @@ print(n_workers, os.cpu_count() - 1)
 
 if not train:
     update_interval = n_test
-    update_interval = 1
 
 n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 start_intensity = intensity
@@ -120,7 +119,7 @@ for fname in [  # "00166cab6b88",
     #        "d073d5018308",
     #        "ec1a5979f489",
     #        "ec1a59832811",
-    "sine+square-1Hz-10-amplitude-18dB-100000.txt"]:
+    "noise+sawtooth-1Hz-10-amplitude-12dB-1000(5&5).txt"]:
     #fname = "" % tracied
     print(fname)
 
@@ -136,7 +135,7 @@ for fname in [  # "00166cab6b88",
         if len(linedata) == 0:
             continue
 
-        linedata_intensity = [abs(x) * intensity for x in linedata[1:len(linedata) - 1]]
+        linedata_intensity = [abs(x) * intensity for x in linedata[1:len(linedata)]]
         cl = int(linedata[-1])
         #if cl > 0:
         #    cl = int(1)
@@ -157,18 +156,20 @@ for fname in [  # "00166cab6b88",
     f.close()
     print(n_attack, n_benign)
 
-train_data, test_data, temp, temp1 = train_test_split(wave_data, wave_data, test_size=0.1)
+train_data, test_data, temp, temp1 = train_test_split(wave_data, wave_data, test_size=0.8)
 
 n_classes = (np.unique(classes)).size
 
 n_train = len(train_data)
 n_test = len(test_data)
 
+a = train_data[-1]["encoded_image"]
 num_inputs = train_data[-1]["encoded_image"].shape[1]
 
 print(n_train, n_test, n_classes)
 
 # Build network.
+
 network = DiehlAndCook2015_NonLinear(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
@@ -228,7 +229,7 @@ voltage_axes, voltage_ims = None, None
 # Train the network.
 print("\nBegin training.\n")
 start = t()
-print("test", update_interval)
+print("check accuracy per", update_interval)
 for epoch in range(n_epochs):
     labels = []
     if epoch % progress_interval == 0:
@@ -306,7 +307,10 @@ for epoch in range(n_epochs):
         # Run the network on the input.
         s_record = []
         t_record = []
-        network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record)
+        rand_gmax = torch.rand(num_inputs, n_neurons)
+        rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
+        network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
+                    rand_gmax = rand_gmax, rand_gmin = rand_gmin)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -314,16 +318,15 @@ for epoch in range(n_epochs):
 
         # Add to spikes recording.
         spike_record[step % update_interval] = spikes["Ae"].get("s").squeeze()
-        p = torch.sum(spikes["Ae"].get("s").squeeze())
 
         # Optionally plot various simulation information.
         if plot:
-            image = batch["encoded_image"].view(90, 50)
-            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(3, 3)
-            input_exc_weights = network.connections[("X", "Ae")].w
-            square_weights = get_square_weights(
-                input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 3
-            )
+            image = batch["encoded_image"].view(100, 50)
+            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, 10)
+            # input_exc_weights = network.connections[("X", "Ae")].w
+            # square_weights = get_square_weights(
+            #     input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 4
+            # )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
             voltages = {"Ae": exc_voltages, "Ai": inh_voltages}
@@ -331,7 +334,7 @@ for epoch in range(n_epochs):
                 image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
             )
             spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
-            weights_im = plot_weights(square_weights, im=weights_im)
+            # weights_im = plot_weights(square_weights, im=weights_im)
             assigns_im = plot_assignments(square_assignments, im=assigns_im)
             perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
             voltage_ims, voltage_axes = plot_voltages(
@@ -356,7 +359,7 @@ spike_record = torch.zeros((update_interval, int(time / dt), n_neurons), device=
 
 # Train the network.
 print("\nBegin testing\n")
-network.train(mode=True)
+network.train(mode=False)
 start = t()
 
 pbar = tqdm(total=n_test)
@@ -372,7 +375,10 @@ for step, batch in enumerate(test_data):
     # Run the network on the input.
     s_record = []
     t_record = []
-    network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record)
+    rand_gmax = torch.rand(num_inputs, n_neurons)
+    rand_gmin =  rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
+    network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record, rand_gmax = rand_gmax,
+                rand_gmin = rand_gmin)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
@@ -400,12 +406,12 @@ for step, batch in enumerate(test_data):
         torch.sum(label_tensor.long() == proportion_pred).item()
     )
 
-network.reset_state_variables()  # Reset state variables.
-pbar.set_description_str("Test progress: ")
-pbar.update()
+    print("\nAll activity accuracy: %.2f" % (accuracy["all"] / n_test * 100))
+    print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test * 100))
 
-print("\nAll activity accuracy: %.2f" % (accuracy["all"] / n_test * 100))
-print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test * 100))
+    network.reset_state_variables()  # Reset state variables.
+    pbar.set_description_str("Test progress: ")
+    pbar.update()
 
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Testing complete.\n")
