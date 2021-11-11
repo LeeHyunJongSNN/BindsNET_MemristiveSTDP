@@ -264,9 +264,9 @@ class DiehlAndCook2015_NonLinear(Network):
         exc_layer = DiehlAndCookNodes(
             n=self.n_neurons,
             traces=True,
-            rest=-60.00, # -65.0
+            rest=-65.00, # -65.0
             reset=-60.0,
-            thresh=-60.0, # -52.0
+            thresh=-52.0, # -52.0
             refrac=5,
             tc_decay=100.0,
             tc_trace=20.0,
