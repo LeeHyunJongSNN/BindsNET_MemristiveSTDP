@@ -24,7 +24,6 @@ from bindsnet.evaluation import (
 from bindsnet.analysis.plotting import (
     plot_input,
     plot_spikes,
-    plot_weights,
     plot_assignments,
     plot_performance,
     plot_voltages,
@@ -34,17 +33,17 @@ from bindsnet.analysis.plotting_weights_counts import hist_weights
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--n_neurons", type=int, default=3)
+parser.add_argument("--n_neurons", type=int, default=100)
 parser.add_argument("--n_epochs", type=int, default=1)
-parser.add_argument("--n_test", type=int, default=1)
-parser.add_argument("--n_train", type=int, default=200)
+parser.add_argument("--n_test", type=int, default=1) # training accuracy check point
+parser.add_argument("--n_train", type=int, default=200) # any number
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.1) # 0.1
+parser.add_argument("--theta_plus", type=float, default=0.05) # 0.1
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=6000) # 256(2^8)~65536(2^16), 512, 6000, 45000 optimization
+parser.add_argument("--intensity", type=float, default=400) # 256(2^8)~65536(2^16), 400, 500, 6000, 45000 optimization
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
 parser.add_argument("--train", dest="train", action="store_true")
@@ -119,7 +118,7 @@ for fname in [  # "00166cab6b88",
     #        "d073d5018308",
     #        "ec1a5979f489",
     #        "ec1a59832811",
-    "noise+sawtooth-1Hz-10-amplitude-12dB-1000(5&5).txt"]:
+    "square+sawtooth-1Hz-10-amplitude-12dB-10000(5&5).txt"]:
     #fname = "" % tracied
     print(fname)
 
@@ -135,7 +134,7 @@ for fname in [  # "00166cab6b88",
         if len(linedata) == 0:
             continue
 
-        linedata_intensity = [abs(x) * intensity for x in linedata[1:len(linedata)]]
+        linedata_intensity = [abs(x) * intensity for x in linedata[0:len(linedata) - 1]]
         cl = int(linedata[-1])
         #if cl > 0:
         #    cl = int(1)
@@ -156,7 +155,7 @@ for fname in [  # "00166cab6b88",
     f.close()
     print(n_attack, n_benign)
 
-train_data, test_data, temp, temp1 = train_test_split(wave_data, wave_data, test_size=0.8)
+train_data, test_data, temp, temp1 = train_test_split(wave_data, wave_data, test_size=0.9)
 
 n_classes = (np.unique(classes)).size
 
