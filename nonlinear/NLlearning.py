@@ -313,7 +313,6 @@ class NonLinear(LearningRule):
         t_record.append(target_s.tolist())
         source_r = torch.tensor(s_record)
         target_r = torch.tensor(t_record)
-        rate = torch.sum(source_r) / 5000
 
         time = len(source_r) - 1
         pulse_time_LTP = 45  # changt this factcor when you want to change LTP time slot
@@ -330,8 +329,8 @@ class NonLinear(LearningRule):
         Ae_cur_index = 0
 
         # Factors for nonlinear update.
-        vltp = 1.0
-        vltd = -1.0
+        vltp = -1.0
+        vltd = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
         grand = "true"  # random distribution Gmax and Gmin

@@ -28,7 +28,7 @@ from bindsnet.analysis.plotting import (
     plot_performance,
     plot_voltages,
 )
-from bindsnet.analysis.plotting_weights_counts import hist_weights
+from bindsnet.nonlinear.plotting_weights_counts import hist_weights
 
 parser = argparse.ArgumentParser()
 
@@ -40,17 +40,19 @@ parser.add_argument("--n_train", type=int, default=200) # any number
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.05) # 0.1
+parser.add_argument("--theta_plus", type=float, default=0.04) # 0.1
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=400) # 256(2^8)~65536(2^16), 400, 500, 6000, 45000 optimization
+parser.add_argument("--intensity", type=float, default=320) # 256(2^8)~65536(2^16), 300, 500, 6000, 45000 optimization
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
+parser.add_argument("--test_ratio", type=float, default=0.9)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(plot=True, gpu=False)
+parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
+parser.set_defaults(plot=True, gpu=True)
 
 args = parser.parse_args()
 
@@ -68,15 +70,22 @@ dt = args.dt
 intensity = args.intensity
 progress_interval = args.progress_interval
 update_interval = args.update_interval
+test_ratio = args.test_ratio
 train = args.train
 plot = args.plot
 gpu = args.gpu
+spare_gpu = args.spare_gpu
 
 # Sets up Gpu use
 gc.collect()
 torch.cuda.empty_cache()
 
+if spare_gpu != 0:
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(spare_gpu)
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 if gpu and torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)
 else:
@@ -155,7 +164,7 @@ for fname in [  # "00166cab6b88",
     f.close()
     print(n_attack, n_benign)
 
-train_data, test_data, temp, temp1 = train_test_split(wave_data, wave_data, test_size=0.9)
+train_data, test_data, temp, temp1 = train_test_split(wave_data, wave_data, test_size=test_ratio)
 
 n_classes = (np.unique(classes)).size
 
