@@ -11,7 +11,7 @@ from time import time as t
 
 from sklearn.model_selection import train_test_split
 
-from bindsnet.encoding import PoissonEncoder
+from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
 from bindsnet.nonlinear.NLmodels import DiehlAndCook2015_NonLinear
 from bindsnet.nonlinear.NLlearning import NonLinear
 from bindsnet.network.monitors import Monitor
@@ -33,20 +33,21 @@ from bindsnet.nonlinear.plotting_weights_counts import hist_weights
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--n_neurons", type=int, default=100)
-parser.add_argument("--n_epochs", type=int, default=1)
+parser.add_argument("--n_neurons", type=int, default=40) # 100
+parser.add_argument("--n_epochs", type=int, default=2)
 parser.add_argument("--n_test", type=int, default=1) # training accuracy check point
 parser.add_argument("--n_train", type=int, default=200) # any number
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.04) # 0.1
+parser.add_argument("--theta_plus", type=float, default=0.00001) # 0.1
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=320) # 256(2^8)~65536(2^16), 300, 500, 6000, 45000 optimization
+parser.add_argument("--intensity", type=float, default=100) #256(2^8)~65536(2^16), 300, 500, 6000, 45000 optimization
+parser.add_argument("--encoder", dest="encoder_type", default="RankOrderEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
-parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=0.9)
+parser.add_argument("--update_interval", type=int, default=1)
+parser.add_argument("--test_ratio", type=float, default=0.6)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -68,6 +69,7 @@ theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
 intensity = args.intensity
+enocder_type = args.encoder_type
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 test_ratio = args.test_ratio
@@ -109,7 +111,23 @@ if not train:
 n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 start_intensity = intensity
 
-encoder = PoissonEncoder(time=time, dt=dt)
+if (enocder_type == "PoissonEncoder"):
+    encoder = PoissonEncoder(time=time, dt=dt)
+
+elif (enocder_type == "RankOrderEncoder"):
+    encoder = RankOrderEncoder(time=time, dt=dt)
+
+elif (enocder_type == "BernoulliEncoder"):
+    encoder = BernoulliEncoder(time=time, dt=dt)
+
+elif (enocder_type == "SingleEncoder"):
+    encoder = SingleEncoder(time=time, dt=dt)
+
+elif (enocder_type == "RepeatEncoder"):
+    encoder = RepeatEncoder(time=time, dt=dt)
+
+else:
+    print("Error!! There is no such encoder!!")
 
 train_data = []
 test_data = []
@@ -127,7 +145,7 @@ for fname in [  # "00166cab6b88",
     #        "d073d5018308",
     #        "ec1a5979f489",
     #        "ec1a59832811",
-    "square+sawtooth-1Hz-10-amplitude-12dB-10000(5&5).txt"]:
+    "sawtooth+sine-1Hz-10-amplitude-12dB-10000(5&5).txt"]:
     #fname = "" % tracied
     print(fname)
 
@@ -171,13 +189,11 @@ n_classes = (np.unique(classes)).size
 n_train = len(train_data)
 n_test = len(test_data)
 
-a = train_data[-1]["encoded_image"]
-num_inputs = train_data[-1]["encoded_image"].shape[1]
+num_inputs = train_data[1]["encoded_image"].shape[1]
 
 print(n_train, n_test, n_classes)
 
 # Build network.
-
 network = DiehlAndCook2015_NonLinear(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
@@ -318,7 +334,7 @@ for epoch in range(n_epochs):
         rand_gmax = torch.rand(num_inputs, n_neurons)
         rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
-                    rand_gmax = rand_gmax, rand_gmin = rand_gmin)
+                    rand_gmax=rand_gmax, rand_gmin=rand_gmin)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -333,8 +349,8 @@ for epoch in range(n_epochs):
             inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, 10)
             # input_exc_weights = network.connections[("X", "Ae")].w
             # square_weights = get_square_weights(
-            #     input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 4
-            # )
+            #    input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 3
+            #)
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
             voltages = {"Ae": exc_voltages, "Ai": inh_voltages}
@@ -385,8 +401,8 @@ for step, batch in enumerate(test_data):
     t_record = []
     rand_gmax = torch.rand(num_inputs, n_neurons)
     rand_gmin =  rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
-    network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record, rand_gmax = rand_gmax,
-                rand_gmin = rand_gmin)
+    network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record, rand_gmax=rand_gmax,
+                rand_gmin=rand_gmin)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
@@ -410,9 +426,7 @@ for step, batch in enumerate(test_data):
     # print(accuracy["all"], label_tensor.long(), all_activity_pred)
     # Compute network accuracy according to available classification strategies.
     accuracy["all"] += float(torch.sum(label_tensor.long() == all_activity_pred).item())
-    accuracy["proportion"] += float(
-        torch.sum(label_tensor.long() == proportion_pred).item()
-    )
+    accuracy["proportion"] += float(torch.sum(label_tensor.long() == proportion_pred).item())
 
     print("\nAll activity accuracy: %.2f" % (accuracy["all"] / n_test * 100))
     print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test * 100))
