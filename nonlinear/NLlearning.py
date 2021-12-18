@@ -8,8 +8,8 @@ import numpy as np
 
 from ..network.monitors import Monitor, NetworkMonitor, AbstractMonitor
 from ..encoding.encodings import poisson
-from ..network.nodes import SRM0Nodes, Input, LIFNodes
-from ..nonlinear.NLtopology import (
+from .NLnodes import SRM0Nodes, Input, LIFNodes
+from .NLtopology import (
     AbstractConnection,
     Connection,
     Conv2dConnection,

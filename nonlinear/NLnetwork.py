@@ -4,10 +4,10 @@ from typing import Dict, Optional, Type, Iterable
 import torch
 
 from ..network.monitors import AbstractMonitor
-from ..network.nodes import Nodes, CSRMNodes
+from .NLnodes import Nodes, CSRMNodes
 from .NLtopology import AbstractConnection
 from ..learning.reward import AbstractReward
-from ..network.nodes import SRM0Nodes, Input, LIFNodes
+from .NLnodes import SRM0Nodes, Input, LIFNodes
 from ..network.monitors import Monitor, NetworkMonitor, AbstractMonitor
 
 def load(file_name: str, map_location: str = "cpu", learning: bool = None) -> "Network":

@@ -7,7 +7,7 @@ from torch.nn import Module, Parameter
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from ..network.nodes import Nodes, CSRMNodes
+from .NLnodes import Nodes, CSRMNodes
 
 
 class AbstractConnection(ABC, Module):
