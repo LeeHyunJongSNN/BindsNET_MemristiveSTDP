@@ -12,7 +12,7 @@ from time import time as t
 from sklearn.model_selection import train_test_split
 
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
-from bindsnet.nonlinear.NLmodels import DiehlAndCook2015_NonLinear
+from bindsnet.nonlinear.NLmodels import DiehlAndCook2015_NonLinear, TTFSNetwork_NonLinear
 from bindsnet.nonlinear.NLlearning import NonLinear
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments
@@ -32,22 +32,22 @@ from bindsnet.nonlinear.plotting_weights_counts import hist_weights
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--n_neurons", type=int, default=40) # 100
-parser.add_argument("--n_epochs", type=int, default=2)
+parser.add_argument("--seed", type=int, default=10)
+parser.add_argument("--n_neurons", type=int, default=36) # 100
+parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=1) # training accuracy check point
 parser.add_argument("--n_train", type=int, default=200) # any number
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.00001) # 0.1
+parser.add_argument("--theta_plus", type=float, default=0.05) # 0.1
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=100) #256(2^8)~65536(2^16), 300, 500, 6000, 45000 optimization
+parser.add_argument("--intensity", type=float, default=2000) # poisson encoding 320, 6000, 45000 optimization
 parser.add_argument("--encoder", dest="encoder_type", default="RankOrderEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
-parser.add_argument("--test_ratio", type=float, default=0.6)
+parser.add_argument("--test_ratio", type=float, default=0.97)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -145,7 +145,7 @@ for fname in [  # "00166cab6b88",
     #        "d073d5018308",
     #        "ec1a5979f489",
     #        "ec1a59832811",
-    "sawtooth+sine-1Hz-10-amplitude-12dB-10000(5&5).txt"]:
+    "sine+square-1Hz-10-amplitude-12dB-10000(5&5).txt"]:
     #fname = "" % tracied
     print(fname)
 
@@ -194,7 +194,7 @@ num_inputs = train_data[1]["encoded_image"].shape[1]
 print(n_train, n_test, n_classes)
 
 # Build network.
-network = DiehlAndCook2015_NonLinear(
+network = TTFSNetwork_NonLinear(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
     exc=exc,
