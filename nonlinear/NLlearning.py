@@ -315,8 +315,8 @@ class NonLinear(LearningRule):
         target_r = torch.tensor(t_record)
 
         time = len(source_r) - 1
-        pulse_time_LTP = 45  # changt this factcor when you want to change LTP time slot
-        pulse_time_LTD = 45  # changt this factcor when you want to change LTD time slot
+        pulse_time_LTP = 45  # change this factcor when you want to change LTP time slot
+        pulse_time_LTD = 45   # change this factcor when you want to change LTD time slot
         simulation_time = 500  # change this factor when you want to change your simulation time in main module
 
         update_index_and_time = torch.nonzero(target_r)
@@ -329,8 +329,9 @@ class NonLinear(LearningRule):
         Ae_cur_index = 0
 
         # Factors for nonlinear update.
-        vltp = -0.5
-        vltd = 0.5
+        vltp = 1.0
+        vltd = -1.0
+        b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
         grand = "true"  # random distribution Gmax and Gmin
@@ -341,9 +342,8 @@ class NonLinear(LearningRule):
 
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
-        b = 1.0
 
-        if vltp == 0 and vltd == 0: # fully linear update
+        if vltp == 0 and vltd == 0:  # fully linear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
@@ -373,19 +373,20 @@ class NonLinear(LearningRule):
                                 Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
                                 self.connection.w[i, Ae_cur_index] += gmin[i, Ae_cur_index]
 
-                    if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                        Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                        Ae_stdp_index_LTD = torch.nonzero(
-                            target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
-                        if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
-                            for i in range(X_size):
-                                if len(Ae_stdp_index_LTD) > 1:
-                                    for k in range(len(Ae_stdp_index_LTD) - 1):
-                                        Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                    if time - pulse_time_LTD > 0:
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_stdp_index_LTD = torch.nonzero(
+                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                            if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                                for i in range(X_size):
+                                    if len(Ae_stdp_index_LTD) > 1:
+                                        for k in range(len(Ae_stdp_index_LTD) - 1):
+                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
+                                    elif len(Ae_stdp_index_LTD) == 1:
+                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
-                                elif len(Ae_stdp_index_LTD) == 1:
-                                    Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                    self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -403,7 +404,7 @@ class NonLinear(LearningRule):
                                             Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                             self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
 
-        elif vltp !=0 and vltd == 0: # half nonlinear update
+        elif vltp != 0 and vltd == 0:  # half nonlinear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
@@ -437,19 +438,20 @@ class NonLinear(LearningRule):
                                 self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
                                     i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
 
-                    if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                        Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                        Ae_stdp_index_LTD = torch.nonzero(
-                            target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
-                        if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
-                            for i in range(X_size):
-                                if len(Ae_stdp_index_LTD) > 1:
-                                    for k in range(len(Ae_stdp_index_LTD) - 1):
-                                        Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                    if time - pulse_time_LTD > 0:
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_stdp_index_LTD = torch.nonzero(
+                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                            if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                                for i in range(X_size):
+                                    if len(Ae_stdp_index_LTD) > 1:
+                                        for k in range(len(Ae_stdp_index_LTD) - 1):
+                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
+                                    elif len(Ae_stdp_index_LTD) == 1:
+                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
-                                elif len(Ae_stdp_index_LTD) == 1:
-                                    Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                    self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -476,7 +478,7 @@ class NonLinear(LearningRule):
                     Ae_stdp_time = time  # latest update time
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
                 if Ae_stdp_time < pulse_time_LTP:
-                    if torch.sum(source_r[0:Ae_stdp_time]) > 0: # LTP
+                    if torch.sum(source_r[0:Ae_stdp_time]) > 0:  # LTP
                         for i in range(X_size):
                             if len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -497,23 +499,27 @@ class NonLinear(LearningRule):
                                 Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
                                 self.connection.w[i, Ae_cur_index] += gmin[i, Ae_cur_index]
 
-                    if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                        Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                        Ae_stdp_index_LTD = torch.nonzero(
-                            target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
-                        if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
-                            for i in range(X_size):
-                                if len(Ae_stdp_index_LTD) > 1:
-                                    for k in range(len(Ae_stdp_index_LTD) - 1):
-                                        Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                    if time - pulse_time_LTD > 0:
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_stdp_index_LTD = torch.nonzero(
+                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                            if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                                for i in range(X_size):
+                                    if len(Ae_stdp_index_LTD) > 1:
+                                        for k in range(len(Ae_stdp_index_LTD) - 1):
+                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
+                                                                                   g1ltd[i, Ae_cur_index] - gmax[
+                                                                                       i, Ae_cur_index]) * (
+                                                                                          1 - np.exp(vltd / 256))
+                                    elif len(Ae_stdp_index_LTD) == 1:
+                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                               g1ltd[i, Ae_cur_index] - gmax[
+                                                                               g1ltd[
+                                                                                   i, Ae_cur_index] - gmax[
                                                                                    i, Ae_cur_index]) * (
                                                                                           1 - np.exp(vltd / 256))
-                                elif len(Ae_stdp_index_LTD) == 1:
-                                    Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                    self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] + g1ltd[
-                                        i, Ae_cur_index] - gmax[i, Ae_cur_index]) * (1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -530,16 +536,16 @@ class NonLinear(LearningRule):
                                                                                            i, Ae_cur_index] + g1ltd[
                                                                                            i, Ae_cur_index] - gmax[
                                                                                            i, Ae_cur_index]) * (
-                                                                                                  1 - np.exp(
-                                                                                              vltd / 256))
+                                                                                              1 - np.exp(
+                                                                                          vltd / 256))
                                         elif len(Ae_stdp_index_LTD) == 1:
                                             Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                             self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
                                                                                    g1ltd[i, Ae_cur_index] - gmax[
                                                                                        i, Ae_cur_index]) * (
-                                                                                              1 - np.exp(vltd / 256))
+                                                                                          1 - np.exp(vltd / 256))
 
-        elif vltp != 0 and vltd != 0: # fully nonlinear update
+        elif vltp != 0 and vltd != 0:  # fully nonlinear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
@@ -573,23 +579,27 @@ class NonLinear(LearningRule):
                                 self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
                                     i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
 
-                    if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                        Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                        Ae_stdp_index_LTD = torch.nonzero(
-                            target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
-                        if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
-                            for i in range(X_size):
-                                if len(Ae_stdp_index_LTD) > 1:
-                                    for k in range(len(Ae_stdp_index_LTD) - 1):
-                                        Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                    if time - pulse_time_LTD > 0:
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_stdp_index_LTD = torch.nonzero(
+                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                            if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                                for i in range(X_size):
+                                    if len(Ae_stdp_index_LTD) > 1:
+                                        for k in range(len(Ae_stdp_index_LTD) - 1):
+                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
+                                                                                   g1ltd[i, Ae_cur_index] - gmax[
+                                                                                       i, Ae_cur_index]) * (
+                                                                                          1 - np.exp(vltd / 256))
+                                    elif len(Ae_stdp_index_LTD) == 1:
+                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                               g1ltd[i, Ae_cur_index] - gmax[
+                                                                               g1ltd[
+                                                                                   i, Ae_cur_index] - gmax[
                                                                                    i, Ae_cur_index]) * (
                                                                                           1 - np.exp(vltd / 256))
-                                elif len(Ae_stdp_index_LTD) == 1:
-                                    Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                    self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] + g1ltd[
-                                        i, Ae_cur_index] - gmax[i, Ae_cur_index]) * (1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -606,14 +616,14 @@ class NonLinear(LearningRule):
                                                                                            i, Ae_cur_index] + g1ltd[
                                                                                            i, Ae_cur_index] - gmax[
                                                                                            i, Ae_cur_index]) * (
-                                                                                                  1 - np.exp(
-                                                                                              vltd / 256))
+                                                                                              1 - np.exp(
+                                                                                          vltd / 256))
                                         elif len(Ae_stdp_index_LTD) == 1:
                                             Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                             self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
                                                                                    g1ltd[i, Ae_cur_index] - gmax[
                                                                                        i, Ae_cur_index]) * (
-                                                                                              1 - np.exp(vltd / 256))
+                                                                                          1 - np.exp(vltd / 256))
 
         super().update()
 
@@ -701,19 +711,20 @@ class NonLinear(LearningRule):
                                 Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
                                 self.connection.w[i, Ae_cur_index] += gmin[i, Ae_cur_index]
 
-                    if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                        Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                        Ae_stdp_index_LTD = torch.nonzero(
-                            target_r[time - pulse_time])  # latest update nueron index of LTD
-                        if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
-                            for i in range(X_size):
-                                if len(Ae_stdp_index_LTD) > 1:
-                                    for k in range(len(Ae_stdp_index_LTD) - 1):
-                                        Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                    if time - pulse_time_LTD > 0:
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_stdp_index_LTD = torch.nonzero(
+                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                            if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                                for i in range(X_size):
+                                    if len(Ae_stdp_index_LTD) > 1:
+                                        for k in range(len(Ae_stdp_index_LTD) - 1):
+                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
+                                    elif len(Ae_stdp_index_LTD) == 1:
+                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
-                                elif len(Ae_stdp_index_LTD) == 1:
-                                    Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                    self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -765,19 +776,20 @@ class NonLinear(LearningRule):
                                 self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
                                     i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
 
-                    if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                        Ae_stdp_time_LTD = time - pulse_time  # latest update time of LTD
-                        Ae_stdp_index_LTD = torch.nonzero(
-                            target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
-                        if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
-                            for i in range(X_size):
-                                if len(Ae_stdp_index_LTD) > 1:
-                                    for k in range(len(Ae_stdp_index_LTD) - 1):
-                                        Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                    if time - pulse_time_LTD > 0:
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_stdp_index_LTD = torch.nonzero(
+                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                            if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                                for i in range(X_size):
+                                    if len(Ae_stdp_index_LTD) > 1:
+                                        for k in range(len(Ae_stdp_index_LTD) - 1):
+                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
+                                    elif len(Ae_stdp_index_LTD) == 1:
+                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
-                                elif len(Ae_stdp_index_LTD) == 1:
-                                    Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                    self.connection.w[i, Ae_cur_index] -= gmax[i, Ae_cur_index]
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -825,23 +837,27 @@ class NonLinear(LearningRule):
                                 Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
                                 self.connection.w[i, Ae_cur_index] += gmin[i, Ae_cur_index]
 
-                    if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                        Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                        Ae_stdp_index_LTD = torch.nonzero(
-                            target_r[time - pulse_time])  # latest update nueron index of LTD
-                        if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
-                            for i in range(X_size):
-                                if len(Ae_stdp_index_LTD) > 1:
-                                    for k in range(len(Ae_stdp_index_LTD) - 1):
-                                        Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                    if time - pulse_time_LTD > 0:
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_stdp_index_LTD = torch.nonzero(
+                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                            if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                                for i in range(X_size):
+                                    if len(Ae_stdp_index_LTD) > 1:
+                                        for k in range(len(Ae_stdp_index_LTD) - 1):
+                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
+                                                                                   g1ltd[i, Ae_cur_index] - gmax[
+                                                                                       i, Ae_cur_index]) * (
+                                                                                          1 - np.exp(vltd / 256))
+                                    elif len(Ae_stdp_index_LTD) == 1:
+                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                               g1ltd[i, Ae_cur_index] - gmax[
+                                                                               g1ltd[
+                                                                                   i, Ae_cur_index] - gmax[
                                                                                    i, Ae_cur_index]) * (
-                                                                                      1 - np.exp(vltd / 256))
-                                elif len(Ae_stdp_index_LTD) == 1:
-                                    Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                    self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] + g1ltd[
-                                        i, Ae_cur_index] - gmax[i, Ae_cur_index]) * (1 - np.exp(vltd / 256))
+                                                                                          1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -901,23 +917,27 @@ class NonLinear(LearningRule):
                                 self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
                                     i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
 
-                    if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                        Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                        Ae_stdp_index_LTD = torch.nonzero(
-                            target_r[time - pulse_time])  # latest update nueron index of LTD
-                        if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
-                            for i in range(X_size):
-                                if len(Ae_stdp_index_LTD) > 1:
-                                    for k in range(len(Ae_stdp_index_LTD) - 1):
-                                        Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                    if time - pulse_time_LTD > 0:
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_stdp_index_LTD = torch.nonzero(
+                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                            if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                                for i in range(X_size):
+                                    if len(Ae_stdp_index_LTD) > 1:
+                                        for k in range(len(Ae_stdp_index_LTD) - 1):
+                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
+                                                                                   g1ltd[i, Ae_cur_index] - gmax[
+                                                                                       i, Ae_cur_index]) * (
+                                                                                          1 - np.exp(vltd / 256))
+                                    elif len(Ae_stdp_index_LTD) == 1:
+                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                               g1ltd[i, Ae_cur_index] - gmax[
+                                                                               g1ltd[
+                                                                                   i, Ae_cur_index] - gmax[
                                                                                    i, Ae_cur_index]) * (
-                                                                                      1 - np.exp(vltd / 256))
-                                elif len(Ae_stdp_index_LTD) == 1:
-                                    Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                    self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] + g1ltd[
-                                        i, Ae_cur_index] - gmax[i, Ae_cur_index]) * (1 - np.exp(vltd / 256))
+                                                                                          1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):

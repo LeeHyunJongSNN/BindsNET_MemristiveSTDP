@@ -9,7 +9,7 @@ from torchvision import models
 
 from .NLlearning import PostPre, NonLinear
 from .NLnetwork import Network
-from .NLnodes import Input, IFNodes, LIFNodes, CurrentLIFNodes, BoostedLIFNodes, DiehlAndCookNodes, AdaptiveLIFNodes, IzhikevichNodes, SRM0Nodes, CSRMNodes
+from .NLnodes import Input, ThetaPlusIFNodes, IFNodes, LIFNodes, CurrentLIFNodes, BoostedLIFNodes, DiehlAndCookNodes, AdaptiveLIFNodes, IzhikevichNodes, SRM0Nodes, CSRMNodes
 from .NLtopology import Connection, LocalConnection
 
 class TwoLayerNetwork_Nonlinear(Network):
@@ -151,9 +151,11 @@ class DiehlAndCook2015_NonLinear(Network):
         exc_layer = DiehlAndCookNodes(
             n=self.n_neurons,
             traces=True,
+            traces_additive=False,
+            sum_input=False,
             rest=-65.0, # -65.0
             reset=-60.0, # -60.0
-            thresh=-52.0, # -52.0
+            thresh=-59.0, # -52.0
             refrac=5,
             tc_decay=100.0,
             tc_trace=20.0,
@@ -310,8 +312,7 @@ class DiehlAndCook2015v2_Nonlinear(Network):
 class TTFSNetwork_NonLinear(Network):
     # language=rst
     """
-    Implements the spiking neural network architecture from `(Diehl & Cook 2015)
-    <https://www.frontiersin.org/articles/10.3389/fncom.2015.00099/full>`_.
+    Implements the spiking neural network architecture for RankOrderEncoder and Wave datasets optimized
     """
 
     def __init__(
@@ -333,7 +334,7 @@ class TTFSNetwork_NonLinear(Network):
     ) -> None:
         # language=rst
         """
-        Constructor for class ``TTFSNetwork_Nonlinear``.
+        Constructor for class ``TTFSNetwork_Nonlinear_Classfication``.
 
         :param n_inpt: Number of input neurons. Matches the 1D size of the input data.
         :param n_neurons: Number of excitatory, inhibitory neurons.
@@ -366,22 +367,25 @@ class TTFSNetwork_NonLinear(Network):
 
         # Layers
         input_layer = Input(
-            n=self.n_inpt, shape=self.inpt_shape, traces=True, tc_trace=20.0
+            n=self.n_inpt,
+            shape=self.inpt_shape,
+            traces=True,
+            tc_trace=20.0
         )
-        exc_layer = IFNodes(
+
+        exc_layer = ThetaPlusIFNodes(
             n=self.n_neurons,
             traces=True,
             traces_additive=True,
             sum_input=True,
-            rest=-60.0,
             reset=-60.0,
-            thresh=-59.5,
-            refrac=5,
-            tc_decay=100.0, # 100
-            tc_trace=20.0, # 20
+            thresh=-56.0,
             theta_plus=theta_plus,
             tc_theta_decay=tc_theta_decay,
+            refrac=5,
+            tc_trace=20.0,
         )
+
         inh_layer = LIFNodes(
             n=self.n_neurons,
             traces=False,
@@ -406,16 +410,27 @@ class TTFSNetwork_NonLinear(Network):
             wmax=wmax,
             norm=norm,
         )
+
         w = self.exc * torch.diag(torch.ones(self.n_neurons))
         exc_inh_conn = Connection(
-            source=exc_layer, target=inh_layer, w=w, wmin=0, wmax=self.exc
+            source=exc_layer,
+            target=inh_layer,
+            w=w,
+            wmin=0,
+            wmax=self.exc
         )
+
         w = -self.inh * (
             torch.ones(self.n_neurons, self.n_neurons)
             - torch.diag(torch.ones(self.n_neurons))
         )
+
         inh_exc_conn = Connection(
-            source=inh_layer, target=exc_layer, w=w, wmin=-self.inh, wmax=0
+            source=inh_layer,
+            target=exc_layer,
+            w=w,
+            wmin=-self.inh,
+            wmax=0
         )
 
         # Add to network
@@ -425,7 +440,6 @@ class TTFSNetwork_NonLinear(Network):
         self.add_connection(input_exc_conn, source="X", target="Ae")
         self.add_connection(exc_inh_conn, source="Ae", target="Ai")
         self.add_connection(inh_exc_conn, source="Ai", target="Ae")
-
 
 class IncreasingInhibitionNetwork_Nonlinear(Network):
     # language=rst
