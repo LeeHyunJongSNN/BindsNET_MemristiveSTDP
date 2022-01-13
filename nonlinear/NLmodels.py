@@ -151,11 +151,11 @@ class DiehlAndCook2015_NonLinear(Network):
         exc_layer = DiehlAndCookNodes(
             n=self.n_neurons,
             traces=True,
-            traces_additive=False,
-            sum_input=False,
+            traces_additive=True,
+            sum_input=True,
             rest=-65.0, # -65.0
             reset=-60.0, # -60.0
-            thresh=-59.0, # -52.0
+            thresh=-52.0, # -52.0
             refrac=5,
             tc_decay=100.0,
             tc_trace=20.0,
@@ -379,7 +379,7 @@ class TTFSNetwork_NonLinear(Network):
             traces_additive=True,
             sum_input=True,
             reset=-60.0,
-            thresh=-56.0,
+            thresh=-54.0,
             theta_plus=theta_plus,
             tc_theta_decay=tc_theta_decay,
             refrac=5,
@@ -398,7 +398,7 @@ class TTFSNetwork_NonLinear(Network):
         )
 
         # Connections
-        w = 0.3 * torch.rand(self.n_inpt, self.n_neurons)
+        w = 0.2 * torch.rand(self.n_inpt, self.n_neurons)
         input_exc_conn = Connection(
             source=input_layer,
             target=exc_layer,

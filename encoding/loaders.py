@@ -74,7 +74,7 @@ def rank_order_loader(
         # Encode datum as rank order-encoded spike trains.
         yield rank_order(datum=data[i], time=time, dt=dt)
 
-def rank_order_ttfs_loader(
+def rank_order_TTFS_loader(
     data: Union[torch.Tensor, Iterable[torch.Tensor]],
     time: int,
     dt: float = 1.0,
