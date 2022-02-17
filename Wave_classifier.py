@@ -6,16 +6,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from tqdm import tqdm
-
 from time import time as t
-
 from sklearn.model_selection import train_test_split
 
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, RankOrderTTFSEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
 from bindsnet.nonlinear.NLmodels import TTFSNetwork_NonLinear, DiehlAndCook2015_NonLinear
-from bindsnet.nonlinear.NLlearning import NonLinear, PostPre
+from bindsnet.nonlinear.NLlearning import NonLinear
 from bindsnet.network.monitors import Monitor
-from bindsnet.utils import get_square_assignments
+from bindsnet.utils import get_square_assignments, get_square_weights
 from bindsnet.evaluation import (
     all_activity,
     proportion_weighting,
@@ -25,6 +23,7 @@ from bindsnet.analysis.plotting import (
     plot_input,
     plot_spikes,
     plot_assignments,
+    plot_weights,
     plot_performance,
     plot_voltages,
 )
@@ -33,18 +32,18 @@ from bindsnet.nonlinear.plotting_weights_counts import hist_weights
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=10)
-parser.add_argument("--n_neurons", type=int, default=36)
+parser.add_argument("--n_neurons", type=int, default=4)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=1)
-parser.add_argument("--n_train", type=int, default=300)
+parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=1)
-parser.add_argument("--encoder", dest="encoder_type", default="RankOrderTTFSEncoder")
+parser.add_argument("--intensity", type=float, default=18)
+parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
 parser.add_argument("--test_ratio", type=float, default=0.95)
@@ -53,7 +52,7 @@ parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(plot=True, gpu=False)
+parser.set_defaults(plot=True, gpu=True)
 
 args = parser.parse_args()
 
@@ -111,22 +110,22 @@ if not train:
 n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 start_intensity = intensity
 
-if (enocder_type == "PoissonEncoder"):
+if enocder_type == "PoissonEncoder":
     encoder = PoissonEncoder(time=time, dt=dt)
 
-elif (enocder_type == "RankOrderEncoder"):
+elif enocder_type == "RankOrderEncoder":
     encoder = RankOrderEncoder(time=time, dt=dt)
 
-elif (enocder_type == "RankOrderTTFSEncoder"):
+elif enocder_type == "RankOrderTTFSEncoder":
     encoder = RankOrderTTFSEncoder(time=time, dt=dt)
 
-elif (enocder_type == "BernoulliEncoder"):
+elif enocder_type == "BernoulliEncoder":
     encoder = BernoulliEncoder(time=time, dt=dt)
 
-elif (enocder_type == "SingleEncoder"):
+elif enocder_type == "SingleEncoder":
     encoder = SingleEncoder(time=time, dt=dt)
 
-elif (enocder_type == "RepeatEncoder"):
+elif enocder_type == "RepeatEncoder":
     encoder = RepeatEncoder(time=time, dt=dt)
 
 else:
@@ -138,44 +137,45 @@ test_data = []
 wave_data = []
 classes = []
 
-fname = "trace.txt"
-for fname in [  # "00166cab6b88",
-    #        "0017882b9a25",
-    #        "44650d56ccd3",
-    #        "50c7bf005639",
-    #        "70ee50183443",
-    #        "74c63b29d71d",
-    #        "d073d5018308",
-    #        "ec1a5979f489",
-    #        "ec1a59832811",
-    "sawtooth+sine-1Hz-10-amplitude-12dB-10000(5&5).txt"]:
-    #fname = "" % tracied
+fname = " "
+for fname in ["WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
     print(fname)
-
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
     n_benign = 0
     linedata = []
+
     for line in f:
         if line[0] == "#":
             continue
 
-        linedata = [float(x) for x in line.split()]
+        linedata = [complex(x) for x in line.split()]
         if len(linedata) == 0:
             continue
 
-        linedata_intensity = [abs(x) * intensity for x in linedata[0:len(linedata) - 1]]
-        cl = int(linedata[-1])
-        #if cl > 0:
-        #    cl = int(1)
-        #    n_attack = n_attack + 1
-        #else:
-        #    cl = int(0)
-        #    n_benign = n_benign + 1
+        # linedata_fft_1 = np.fft.fft([x for x in linedata[0:64]])
+        # linedata_fft_2 = np.fft.fft([x for x in linedata[64:128]])
+        # linedata_fft_3 = np.fft.fft([x for x in linedata[128:192]])
+        # linedata_fft_4 = np.fft.fft([x for x in linedata[192:256]])
+        # linedata_fft_5 = np.fft.fft([x for x in linedata[256:len(linedata) - 1]])
+        # linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + linedata_fft_3.tolist() + \
+        #                linedata_fft_4.tolist() + linedata_fft_5.tolist()
+        # linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
 
-        #    if n_benign > 200:
-        #        continue
+        linedata_fft_1 = np.fft.fft([x for x in linedata[16:80]])
+        linedata_fft_2 = np.fft.fft([x for x in linedata[96:160]])
+        linedata_fft_3 = np.fft.fft([x for x in linedata[192:256]])
+        linedata_fft_4 = np.fft.fft([x for x in linedata[256:len(linedata) - 1]])
+        linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + linedata_fft_3.tolist() + \
+                       linedata_fft_4.tolist()
+        linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
 
+        # linedata_fft = np.fft.fft([x for x in linedata[0:len(linedata) - 1]])
+        # linedata_intensity = [intensity * float(abs(x)) for x in linedata_fft[0:len(linedata_fft)]]
+
+        # linedata_intensity = [abs(x) * intensity for x in linedata[0:len(linedata) - 1]]
+
+        cl = complex(linedata[-1])
         classes.append(cl)
         lbl = torch.tensor([cl])
 
@@ -192,12 +192,12 @@ n_classes = (np.unique(classes)).size
 n_train = len(train_data)
 n_test = len(test_data)
 
-num_inputs = train_data[1]["encoded_image"].shape[1]
+num_inputs = train_data[-1]["encoded_image"].shape[1]
 
 print(n_train, n_test, n_classes)
 
 # Build network.
-network = TTFSNetwork_NonLinear(
+network = DiehlAndCook2015_NonLinear(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
     exc=exc,
@@ -275,11 +275,13 @@ for epoch in range(n_epochs):
             # Convert the array of labels into a tensor
             label_tensor = torch.tensor(labels, device=device)
             # Get network predictions.
+
             all_activity_pred = all_activity(
                 spikes=spike_record,
                 assignments=assignments,
                 n_labels=n_classes,
             )
+
             proportion_pred = proportion_weighting(
                 spikes=spike_record,
                 assignments=assignments,
@@ -348,12 +350,12 @@ for epoch in range(n_epochs):
 
         # Optionally plot various simulation information.
         if plot:
-            image = batch["encoded_image"].view(100, 50)
-            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, 10)
-            # input_exc_weights = network.connections[("X", "Ae")].w
-            # square_weights = get_square_weights(
-            #    input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 3
-            #)
+            image = batch["encoded_image"].view(256, 500)   # 400, 400
+            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)     # 20, 16
+            input_exc_weights = network.connections[("X", "Ae")].w * 100
+            square_weights = get_square_weights(
+               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 16    # 20, 16
+            )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
             voltages = {"Ae": exc_voltages, "Ai": inh_voltages}
@@ -361,7 +363,7 @@ for epoch in range(n_epochs):
                 image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
             )
             spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
-            # weights_im = plot_weights(square_weights, im=weights_im)
+            weights_im = plot_weights(square_weights, im=weights_im)
             assigns_im = plot_assignments(square_assignments, im=assigns_im)
             perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
             voltage_ims, voltage_axes = plot_voltages(
@@ -380,7 +382,7 @@ print("Training complete.\n")
 
 # Sequence of accuracy estimates.
 accuracy = {"all": 0, "proportion": 0}
-confusion_matrix = { "TP":0, "FP":0, "TN":0, "FN":0 }
+confusion_matrix = {"TP": 0, "FP": 0, "TN": 0, "FN": 0}
 
 # Record spikes during the simulation.
 spike_record = torch.zeros((update_interval, int(time / dt), n_neurons), device=device)
@@ -404,9 +406,9 @@ for step, batch in enumerate(test_data):
     s_record = []
     t_record = []
     rand_gmax = torch.rand(num_inputs, n_neurons)
-    rand_gmin =  rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
-    network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record, rand_gmax=rand_gmax,
-                rand_gmin=rand_gmin)
+    rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
+    network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
+                rand_gmax=rand_gmax, rand_gmin=rand_gmin)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
@@ -420,6 +422,7 @@ for step, batch in enumerate(test_data):
         assignments=assignments,
         n_labels=n_classes
     )
+
     proportion_pred = proportion_weighting(
         spikes=spike_record,
         assignments=assignments,
@@ -433,8 +436,8 @@ for step, batch in enumerate(test_data):
     accuracy["proportion"] += float(torch.sum(label_tensor.long() == proportion_pred).item())
 
     if gpu:
-        P_tensor = torch.ones(label_tensor.long().shape).long().cuda()     # label 1
-        N_tensor = torch.zeros(label_tensor.long().shape).long().cuda()    # label 0
+        P_tensor = torch.zeros(label_tensor.long().shape).long().cuda()     # label 1
+        N_tensor = torch.ones(label_tensor.long().shape).long().cuda()    # label 0
 
     else:
         P_tensor = torch.ones(label_tensor.long().shape).long()     # label 1
@@ -458,5 +461,8 @@ for step, batch in enumerate(test_data):
     print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test * 100))
 
 print(confusion_matrix)
+print("Probability of Detection: %.4f", confusion_matrix["TP"] / (confusion_matrix["TP"] + confusion_matrix["FN"]))
+print("False Negative Probability: %.4f", confusion_matrix["FN"] / (confusion_matrix["TP"] + confusion_matrix["FN"]))
+print("False Positive Probability: %.4f", confusion_matrix["FP"] / (confusion_matrix["FP"] + confusion_matrix["TN"]))
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Testing complete.\n")

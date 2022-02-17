@@ -35,4 +35,5 @@ __all__ = [
     "BernoulliEncoder",
     "PoissonEncoder",
     "RankOrderEncoder",
+    "RankOrderTTFSEncoder"
 ]

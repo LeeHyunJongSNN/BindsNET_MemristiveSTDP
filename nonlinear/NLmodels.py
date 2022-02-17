@@ -367,10 +367,7 @@ class TTFSNetwork_NonLinear(Network):
 
         # Layers
         input_layer = Input(
-            n=self.n_inpt,
-            shape=self.inpt_shape,
-            traces=True,
-            tc_trace=20.0
+            n=self.n_inpt, shape=self.inpt_shape, traces=True, tc_trace=20.0
         )
 
         exc_layer = ThetaPlusIFNodes(
