@@ -682,8 +682,8 @@ class NonLinear(LearningRule):
         Ae_cur_index = 0
 
         # Factors for nonlinear update.
-        vltp = 0.0
-        vltd = 0.0
+        vltp = -1.0
+        vltd = -1.0
         b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
@@ -1580,10 +1580,10 @@ class MSTDPET(LearningRule):
 
         # Compute weight update.
         if self.nu[0]:
-            self.connection.w += self.nu[0] * self.reduction(update, dim=0)  # self.nu[0]
+            self.connection.w += self.nu[0] * self.reduction(update, dim=0)  
 
         if self.nu[1]:
-            self.connection.w += self.nu[1] * self.reduction(update, dim=0)  # self.nu[1]
+            self.connection.w += self.nu[1] * self.reduction(update, dim=0) 
 
         # Update P^+ and P^- values.
         self.p_plus *= torch.exp(-self.connection.dt / self.tc_plus)

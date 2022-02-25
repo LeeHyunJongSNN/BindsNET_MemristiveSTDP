@@ -461,8 +461,8 @@ for step, batch in enumerate(test_data):
     print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test * 100))
 
 print(confusion_matrix)
-print("Probability of Detection: %.4f", confusion_matrix["TP"] / (confusion_matrix["TP"] + confusion_matrix["FN"]))
-print("False Negative Probability: %.4f", confusion_matrix["FN"] / (confusion_matrix["TP"] + confusion_matrix["FN"]))
-print("False Positive Probability: %.4f", confusion_matrix["FP"] / (confusion_matrix["FP"] + confusion_matrix["TN"]))
+print("Probability of Detection: %.4f" % (confusion_matrix["TP"] / (confusion_matrix["TP"] + confusion_matrix["FN"])))
+print("False Negative Probability: %.4f" % (confusion_matrix["FN"] / (confusion_matrix["TP"] + confusion_matrix["FN"])))
+print("False Positive Probability: %.4f" % (confusion_matrix["FP"] / (confusion_matrix["FP"] + confusion_matrix["TN"])))
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Testing complete.\n")
