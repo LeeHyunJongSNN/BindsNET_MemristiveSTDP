@@ -206,7 +206,6 @@ class DiehlAndCook2015_NonLinear(Network):
         self.add_connection(exc_inh_conn, source="Ae", target="Ai")
         self.add_connection(inh_exc_conn, source="Ai", target="Ae")
 
-
 class DiehlAndCook2015v2_Nonlinear(Network):
     # language=rst
     """
