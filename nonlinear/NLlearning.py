@@ -330,8 +330,8 @@ class NonLinear(LearningRule):
         Ae_cur_index = 0
 
         # Factors for nonlinear update.
-        vltp = -5.0
-        vltd = 5.0
+        vltp = 0.0
+        vltd = 0.0
         b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
@@ -354,8 +354,7 @@ class NonLinear(LearningRule):
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
                 if Ae_LTP_time < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -370,7 +369,7 @@ class NonLinear(LearningRule):
                 elif Ae_LTP_time >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                            -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -390,7 +389,7 @@ class NonLinear(LearningRule):
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
-                                    -1).tolist()  # STDP causing spikes
+                                    -1)  # STDP causing spikes
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -410,7 +409,7 @@ class NonLinear(LearningRule):
                                     -1)  # latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
-                                        -1).tolist()  # STDP causing spikes
+                                        -1)  # STDP causing spikes
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -432,8 +431,7 @@ class NonLinear(LearningRule):
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
                 if Ae_LTP_time < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -448,7 +446,7 @@ class NonLinear(LearningRule):
                 elif Ae_LTP_time >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[Ae_ltp_time - pulse_time_LTP:Ae_ltp_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                            -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -468,7 +466,7 @@ class NonLinear(LearningRule):
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
-                                    -1).tolist()  # STDP causing spikes
+                                    -1)  # STDP causing spikes
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -488,7 +486,7 @@ class NonLinear(LearningRule):
                                     -1)  # latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
-                                        -1).tolist()  # STDP causing spikes
+                                        -1)  # STDP causing spikes
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -510,8 +508,7 @@ class NonLinear(LearningRule):
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
                 if Ae_LTP_time < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -526,7 +523,7 @@ class NonLinear(LearningRule):
                 elif Ae_LTP_time >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[Ae_ltp_time - pulse_time_LTP:Ae_ltp_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                            -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -546,7 +543,7 @@ class NonLinear(LearningRule):
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
-                                    -1).tolist()  # STDP causing spikes
+                                    -1)  # STDP causing spikes
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -571,7 +568,7 @@ class NonLinear(LearningRule):
                                     -1)  # latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
-                                        -1).tolist()  # STDP causing spikes
+                                        -1)  # STDP causing spikes
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -599,8 +596,7 @@ class NonLinear(LearningRule):
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
                 if Ae_LTP_time < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -615,7 +611,7 @@ class NonLinear(LearningRule):
                 elif Ae_LTP_time >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[Ae_ltp_time - pulse_time_LTP:Ae_ltp_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                            -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -635,7 +631,7 @@ class NonLinear(LearningRule):
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
-                                    -1).tolist()  # STDP causing spikes
+                                    -1)  # STDP causing spikes
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -660,7 +656,7 @@ class NonLinear(LearningRule):
                                     -1)  # latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
-                                        -1).tolist()  # STDP causing spikes
+                                        -1)  # STDP causing spikes
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -743,8 +739,7 @@ class NonLinear(LearningRule):
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
                 if Ae_LTP_time < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -759,7 +754,7 @@ class NonLinear(LearningRule):
                 elif Ae_LTP_time >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                            -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -779,7 +774,7 @@ class NonLinear(LearningRule):
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
-                                    -1).tolist()  # STDP causing spikes
+                                    -1)  # STDP causing spikes
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -799,7 +794,7 @@ class NonLinear(LearningRule):
                                     -1)  # latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
-                                        -1).tolist()  # STDP causing spikes
+                                        -1)  # STDP causing spikes
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -821,8 +816,7 @@ class NonLinear(LearningRule):
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
                 if Ae_LTP_time < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -837,7 +831,7 @@ class NonLinear(LearningRule):
                 elif Ae_LTP_time >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[Ae_ltp_time - pulse_time_LTP:Ae_ltp_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                            -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -857,7 +851,7 @@ class NonLinear(LearningRule):
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
-                                    -1).tolist()  # STDP causing spikes
+                                    -1)  # STDP causing spikes
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -877,7 +871,7 @@ class NonLinear(LearningRule):
                                     -1)  # latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
-                                        -1).tolist()  # STDP causing spikes
+                                        -1)  # STDP causing spikes
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -899,8 +893,7 @@ class NonLinear(LearningRule):
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
                 if Ae_LTP_time < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -915,7 +908,7 @@ class NonLinear(LearningRule):
                 elif Ae_LTP_time >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[Ae_ltp_time - pulse_time_LTP:Ae_ltp_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                            -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -935,7 +928,7 @@ class NonLinear(LearningRule):
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
-                                    -1).tolist()  # STDP causing spikes
+                                    -1)  # STDP causing spikes
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -960,7 +953,7 @@ class NonLinear(LearningRule):
                                     -1)  # latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
-                                        -1).tolist()  # STDP causing spikes
+                                        -1)  # STDP causing spikes
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -988,8 +981,7 @@ class NonLinear(LearningRule):
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
                 if Ae_LTP_time < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -1004,7 +996,7 @@ class NonLinear(LearningRule):
                 elif Ae_LTP_time >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[Ae_ltp_time - pulse_time_LTP:Ae_ltp_time])[:, [1]].view(
-                            -1).tolist()  # STDP causing spikes
+                            -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
@@ -1024,7 +1016,7 @@ class NonLinear(LearningRule):
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
-                                    -1).tolist()  # STDP causing spikes
+                                    -1)  # STDP causing spikes
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
@@ -1049,7 +1041,7 @@ class NonLinear(LearningRule):
                                     -1)  # latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
-                                        -1).tolist()  # STDP causing spikes
+                                        -1)  # STDP causing spikes
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
