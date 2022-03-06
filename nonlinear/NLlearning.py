@@ -330,14 +330,14 @@ class NonLinear(LearningRule):
         Ae_cur_index = 0
 
         # Factors for nonlinear update.
-        vltp = -5.0
+        vltp = 5.0
         vltd = 5.0
-        b = 0.001
+        b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
-        grand = "true"  # random distribution Gmax and Gmin
+        grand = True  # random distribution Gmax and Gmin
 
-        if grand == "true":
+        if grand == True:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
 
