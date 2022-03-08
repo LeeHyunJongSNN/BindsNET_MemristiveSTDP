@@ -9,7 +9,7 @@ from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
 
-from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, RankOrderTTFSEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
+from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder, RankOrderTTFSEncoder
 from bindsnet.nonlinear.NLmodels import TTFSNetwork_NonLinear, DiehlAndCook2015_NonLinear
 from bindsnet.nonlinear.NLlearning import NonLinear
 from bindsnet.network.monitors import Monitor
@@ -153,15 +153,6 @@ for fname in ["WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
         if len(linedata) == 0:
             continue
 
-        # linedata_fft_1 = np.fft.fft([x for x in linedata[0:64]])
-        # linedata_fft_2 = np.fft.fft([x for x in linedata[64:128]])
-        # linedata_fft_3 = np.fft.fft([x for x in linedata[128:192]])
-        # linedata_fft_4 = np.fft.fft([x for x in linedata[192:256]])
-        # linedata_fft_5 = np.fft.fft([x for x in linedata[256:len(linedata) - 1]])
-        # linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + linedata_fft_3.tolist() + \
-        #                linedata_fft_4.tolist() + linedata_fft_5.tolist()
-        # linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
-
         linedata_fft_1 = np.fft.fft([x for x in linedata[16:80]])
         linedata_fft_2 = np.fft.fft([x for x in linedata[96:160]])
         linedata_fft_3 = np.fft.fft([x for x in linedata[192:256]])
@@ -169,11 +160,6 @@ for fname in ["WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
         linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + linedata_fft_3.tolist() + \
                        linedata_fft_4.tolist()
         linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
-
-        # linedata_fft = np.fft.fft([x for x in linedata[0:len(linedata) - 1]])
-        # linedata_intensity = [intensity * float(abs(x)) for x in linedata_fft[0:len(linedata_fft)]]
-
-        # linedata_intensity = [abs(x) * intensity for x in linedata[0:len(linedata) - 1]]
 
         cl = complex(linedata[-1])
         classes.append(cl)
@@ -350,8 +336,8 @@ for epoch in range(n_epochs):
 
         # Optionally plot various simulation information.
         if plot:
-            image = batch["encoded_image"].view(256, 500)   # 400, 400
-            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)     # 20, 16
+            image = batch["encoded_image"].view(256, 500)    # 320, 500
+            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)    # 20, 16
             input_exc_weights = network.connections[("X", "Ae")].w * 100
             square_weights = get_square_weights(
                input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 16    # 20, 16
@@ -436,8 +422,8 @@ for step, batch in enumerate(test_data):
     accuracy["proportion"] += float(torch.sum(label_tensor.long() == proportion_pred).item())
 
     if gpu:
-        P_tensor = torch.zeros(label_tensor.long().shape).long().cuda()     # label 1
-        N_tensor = torch.ones(label_tensor.long().shape).long().cuda()    # label 0
+        P_tensor = torch.zeros(label_tensor.long().shape).long().cuda()      # label 1
+        N_tensor = torch.ones(label_tensor.long().shape).long().cuda()     # label 0
 
     else:
         P_tensor = torch.ones(label_tensor.long().shape).long()     # label 1
