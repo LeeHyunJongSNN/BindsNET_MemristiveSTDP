@@ -59,8 +59,8 @@ class AbstractConnection(ABC, Module):
         from ..nonlinear.NLlearning import NoOp, NonLinear
 
         self.update_rule = kwargs.get("update_rule", NoOp)
-        self.wmin = kwargs.get("wmin", -np.inf)
-        self.wmax = kwargs.get("wmax", np.inf)
+        self.wmin = kwargs.get("wmin", 0.0)
+        self.wmax = kwargs.get("wmax", 1.0)
         self.norm = kwargs.get("norm", None)
         self.decay = kwargs.get("decay", None)
 
