@@ -324,6 +324,8 @@ for epoch in range(n_epochs):
         t_record = []
         rand_gmax = torch.rand(num_inputs, n_neurons)
         rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
+        # rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+        # rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     rand_gmax=rand_gmax, rand_gmin=rand_gmin)
 
