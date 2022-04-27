@@ -1,5 +1,5 @@
 import tempfile
-from typing import Dict, Optional, Type, Iterable
+from typing import Dict, Iterable, Optional, Type
 
 import torch
 
@@ -61,8 +61,8 @@ class Network(torch.nn.Module):
         network.add_monitor(monitor=M2, name='Y')
 
         # Create Poisson-distributed spike train inputs.
-        data = 15 * torch.rand(300)  # Generate random Poisson rates for 100 input neurons. -> 300으로 수정 21.10.23 이현종
-        train = encoding.poisson(datum=data, time=500)  # Encode input as 5000ms Poisson spike trains. -> 500ms로 수정 21.10.11 이현종
+        data = 15 * torch.rand(100)  # Generate random Poisson rates for 100 input neurons.
+        train = encoding.poisson(datum=data, time=5000)  # Encode input as 5000ms Poisson spike trains.
 
         # Simulate network on generated spike trains.
         inputs = {'X' : train}  # Create inputs mapping.
@@ -313,7 +313,6 @@ class Network(torch.nn.Module):
             "'inputs' must be a dict of names of layers "
             + f"(str) and relevant input tensors. Got {type(inputs).__name__} instead."
         )
-
         # Parse keyword arguments.
         clamps = kwargs.get("clamp", {})
         unclamps = kwargs.get("unclamp", {})
@@ -358,7 +357,6 @@ class Network(torch.nn.Module):
         for t in range(timesteps):
             # Get input to all layers (synchronous mode).
             current_inputs = {}
-
             if not one_step:
                 current_inputs.update(self._get_inputs())
 
@@ -410,7 +408,7 @@ class Network(torch.nn.Module):
                 )
 
             # # Get input to all layers.
-            current_inputs.update(self._get_inputs())
+            # current_inputs.update(self._get_inputs())
 
             # Record state variables of interest.
             for m in self.monitors:
