@@ -11,10 +11,10 @@ from sklearn.metrics import classification_report, confusion_matrix
 max_len = 320
 embedding_dim = 320
 dropout_ratio = 0.3
-num_filters = 128
+num_filters = 160
 kernel_size_1 = 4
-kernel_size_2 = 16
-kernel_size_3 = 32
+kernel_size_2 = 8
+kernel_size_3 = 16
 hidden_units_1 = 32
 hidden_units_2 = 16
 
@@ -41,11 +41,16 @@ for fname in ["WIFI_10MHz_IQvector_(minus)3dB_60000.txt"]:
         if len(linedata) == 0:
             continue
 
+        # linedata_real = [x.real for x in linedata[0:len(linedata) - 1]]
+        # linedata_imag = [x.imag for x in linedata[0:len(linedata) - 1]]
+        # linedata_all = linedata_real + linedata_imag
+
         linedata_abs = [abs(x) for x in linedata[0:len(linedata) - 1]]
 
         cl = linedata[-1].real
 
         wave_label.append(cl)
+        # wave_data.append(linedata_all)
         wave_data.append(linedata_abs)
 
     f.close()
@@ -80,7 +85,6 @@ model.add(Dense(hidden_units_1, activation='relu'))
 model.add(Dense(hidden_units_2, activation='relu'))
 model.add(Dropout(dropout_ratio))
 model.add(Dense(1, activation='sigmoid'))
-# model.add(Linear())
 
 es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
 mc = ModelCheckpoint('best_model.h5', monitor='val_acc', mode='max', verbose=1, save_best_only=True)
