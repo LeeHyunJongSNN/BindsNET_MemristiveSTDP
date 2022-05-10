@@ -10,7 +10,7 @@ from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
 
-from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder, RankOrderTTFSEncoder
+from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, RankOrderTTFSEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
 from bindsnet.nonlinear.NLmodels import TTFSNetwork_NonLinear, DiehlAndCook2015_NonLinear
 from bindsnet.nonlinear.NLlearning import NonLinear
 from bindsnet.network.monitors import Monitor
@@ -44,7 +44,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.0009)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=18)
+parser.add_argument("--intensity", type=float, default=10)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -141,7 +141,7 @@ wave_data = []
 classes = []
 
 fname = " "
-for fname in ["WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
+for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles/WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
@@ -244,6 +244,14 @@ hist_ax = None
 perf_ax = None
 voltage_axes, voltage_ims = None, None
 
+# Random variables
+rand_gmax = torch.rand(num_inputs, n_neurons)
+rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
+# rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+# rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
+rand_i = random.sample(range(0, num_inputs), 16)
+rand_j = random.sample(range(0, n_neurons), 4)
+
 # Train the network.
 print("\nBegin training.\n")
 start = t()
@@ -327,12 +335,8 @@ for epoch in range(n_epochs):
         # Run the network on the input.
         s_record = []
         t_record = []
-        rand_gmax = torch.rand(num_inputs, n_neurons)
-        rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
-        # rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-        # rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
-                    simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin)
+                    simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, rand_i=rand_i, rand_j=rand_j)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -343,11 +347,11 @@ for epoch in range(n_epochs):
 
         # Optionally plot various simulation information.
         if plot:
-            image = batch["encoded_image"].view(256, 500)    # 256, 500
-            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
+            image = batch["encoded_image"].view(256, 500)   # 256, 500
+            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)     # 16, 16
             input_exc_weights = network.connections[("X", "Ae")].w * 100
             square_weights = get_square_weights(
-               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 16
+               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 16    # 16
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
@@ -398,10 +402,6 @@ for step, batch in enumerate(test_data):
     # Run the network on the input.
     s_record = []
     t_record = []
-    rand_gmax = torch.rand(num_inputs, n_neurons)
-    rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
-    # rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-    # rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin)
 
@@ -431,8 +431,8 @@ for step, batch in enumerate(test_data):
     accuracy["proportion"] += float(torch.sum(label_tensor.long() == proportion_pred).item())
 
     if gpu:
-        P_tensor = torch.zeros(label_tensor.long().shape).long().cuda()      # label 1
-        N_tensor = torch.ones(label_tensor.long().shape).long().cuda()     # label 0
+        P_tensor = torch.zeros(label_tensor.long().shape).long().cuda()     # label 1
+        N_tensor = torch.ones(label_tensor.long().shape).long().cuda()    # label 0
 
     else:
         P_tensor = torch.ones(label_tensor.long().shape).long()     # label 1

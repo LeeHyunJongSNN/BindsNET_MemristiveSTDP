@@ -44,7 +44,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=270)
+parser.add_argument("--intensity", type=float, default=300)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -142,7 +142,7 @@ classes = []
 
 fname = " "
 for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
-              "(square+sawtooth)_1kHz_10_amplitude_9dB_20000.txt"]:
+              "(square+sawtooth)_1kHz_10_amplitude_18dB_20000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
@@ -241,6 +241,12 @@ hist_ax = None
 perf_ax = None
 voltage_axes, voltage_ims = None, None
 
+# Random variables
+rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
+rand_i = random.sample(range(0, num_inputs), 10)
+rand_j = random.sample(range(0, n_neurons), 10)
+
 # Train the network.
 print("\nBegin training.\n")
 start = t()
@@ -324,10 +330,8 @@ for epoch in range(n_epochs):
         # Run the network on the input.
         s_record = []
         t_record = []
-        rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-        rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
-                    simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin)
+                    simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, rand_i=rand_i, rand_j=rand_j)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -392,8 +396,6 @@ for step, batch in enumerate(test_data):
     # Run the network on the input.
     s_record = []
     t_record = []
-    rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-    rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin)
 
