@@ -41,10 +41,10 @@ parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.0009)
+parser.add_argument("--theta_plus", type=float, default=0.05)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=10)
+parser.add_argument("--intensity", type=float, default=30)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -141,7 +141,7 @@ wave_data = []
 classes = []
 
 fname = " "
-for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles/WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
+for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles/WIFI_10MHz_IQvector_18dB_20000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
@@ -245,10 +245,8 @@ perf_ax = None
 voltage_axes, voltage_ims = None, None
 
 # Random variables
-rand_gmax = torch.rand(num_inputs, n_neurons)
-rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
-# rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-# rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
+rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
 rand_i = random.sample(range(0, num_inputs), 16)
 rand_j = random.sample(range(0, n_neurons), 4)
 
