@@ -326,11 +326,11 @@ class NonLinear(LearningRule):
         update_time_index = 0
         update_num_index = 0
         X_cause_index = 0
-        Ae_LTP_time = 0
-        Ae_STDP_time_LTD = 0
-        Ae_STDP_index = 0
-        Ae_STDP_index_LTD = 0
-        Ae_cur_index = 0
+        Ae_time_LTP = 0
+        Ae_time_LTD = 0
+        Ae_index_LTP = 0
+        Ae_index_LTD = 0
+        Ae_index_CUR = 0
 
         # dead synapses variables
         rand_i = []
@@ -339,7 +339,7 @@ class NonLinear(LearningRule):
         synapse_exc = 10
 
         # Factors for nonlinear update.
-        vltp = -1.0
+        vltp = 0.0
         vltd = 0.0
         b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
@@ -347,7 +347,7 @@ class NonLinear(LearningRule):
 
         # boolean varibles for addtional feature
         grand = True  # random distribution Gmax and Gmin
-        dead_synapses = True # dead synapses simulation
+        dead_synapses = False # dead synapses simulation
 
         if grand == True:
             gmax = kwargs.get('rand_gmax')
@@ -356,7 +356,7 @@ class NonLinear(LearningRule):
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
-        if dead_synapses == True:
+        if dead_synapses == False:
             rand_i = kwargs.get('rand_i')
             rand_j = kwargs.get('rand_j')
 
@@ -364,84 +364,82 @@ class NonLinear(LearningRule):
                 for j in range(synapse_exc):
                     self.connection.w[rand_i[i], rand_j[j]] = 0
 
-        a = self.connection.w
-
         if vltp == 0 and vltd == 0:  # fully linear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_LTP_time = time  # latest update time
-                    Ae_STDP_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
-                if Ae_LTP_time < pulse_time_LTP:
-                    if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
+                    Ae_time_LTP = time  # latest update time
+                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                if Ae_time_LTP < pulse_time_LTP:
+                    if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
-                            if i in X_cause_index and len(Ae_STDP_index) > 1:
-                                for k in range(len(Ae_STDP_index) - 1):
-                                    Ae_cur_index = Ae_STDP_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
-                            elif i in X_cause_index and len(Ae_STDP_index) == 1:
-                                Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                            if i in X_cause_index and len(Ae_index_LTP) > 1:
+                                for k in range(len(Ae_index_LTP) - 1):
+                                    Ae_index_CUR = Ae_index_LTP[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
+                            elif i in X_cause_index and len(Ae_index_LTP) == 1:
+                                Ae_index_CUR = Ae_index_LTP[len(Ae_index_LTP) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
-                elif Ae_LTP_time >= pulse_time_LTP:
-                    if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
+                elif Ae_time_LTP >= pulse_time_LTP:
+                    if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:, [1]].view(
                             -1)  # STDP causing spikes
                         for i in range(X_size):
-                            if i in X_cause_index and len(Ae_STDP_index) > 1:
-                                for k in range(len(Ae_STDP_index) - 1):
-                                    Ae_cur_index = Ae_STDP_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
-                            elif i in X_cause_index and len(Ae_STDP_index) == 1:
-                                Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                            if i in X_cause_index and len(Ae_index_LTP) > 1:
+                                for k in range(len(Ae_index_LTP) - 1):
+                                    Ae_index_CUR = Ae_index_LTP[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
+                            elif i in X_cause_index and len(Ae_index_LTP) == 1:
+                                Ae_index_CUR = Ae_index_LTP[len(Ae_index_LTP) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_STDP_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                            Ae_STDP_index_LTD = torch.nonzero(
+                            Ae_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_index_LTD = torch.nonzero(
                                 target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
-                            if torch.sum(source_r[Ae_STDP_time_LTD:Ae_STDP_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                            if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
-                                    source_r[Ae_STDP_time_LTD:Ae_STDP_time_LTD + pulse_time_LTD])[:, [1]].view(
+                                    source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
                                     -1)  # STDP causing spikes
                                 for i in range(X_size):
-                                    if i in X_cause_index and len(Ae_STDP_index_LTD) > 1:
-                                        for k in range(len(Ae_STDP_index_LTD) - 1):
-                                            Ae_cur_index = Ae_STDP_index_LTD[k].item()
-                                            self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
-                                    elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
-                                        Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
-                                        self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                                    if i in X_cause_index and len(Ae_index_LTD) > 1:
+                                        for k in range(len(Ae_index_LTD) - 1):
+                                            Ae_index_CUR = Ae_index_LTD[k].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
+                                    elif i in X_cause_index and len(Ae_index_LTD) == 1:
+                                        Ae_index_CUR = Ae_index_LTD[len(Ae_index_LTD) - 1].item()
+                                        self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_STDP_time_LTD = j  # latest update time of LTD
-                                Ae_STDP_index_LTD = torch.nonzero(target_r[j]).view(
+                                Ae_time_LTD = j  # latest update time of LTD
+                                Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # latest update nueron index of LTD
-                                if torch.sum(source_r[Ae_STDP_time_LTD:time]) > 0:  # LTD
-                                    X_cause_index = torch.nonzero(source_r[Ae_STDP_time_LTD:time])[:, [1]].view(
+                                if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
+                                    X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
                                     for i in range(X_size):
-                                        if i in X_cause_index and len(Ae_STDP_index_LTD) > 1:
-                                            for k in range(len(Ae_STDP_index_LTD) - 1):
-                                                Ae_cur_index = Ae_STDP_index_LTD[k].item()
-                                                self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
-                                        elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
-                                            Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
-                                            self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                                        if i in X_cause_index and len(Ae_index_LTD) > 1:
+                                            for k in range(len(Ae_index_LTD) - 1):
+                                                Ae_index_CUR = Ae_index_LTD[k].item()
+                                                self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
+                                        elif i in X_cause_index and len(Ae_index_LTD) == 1:
+                                            Ae_index_CUR = Ae_index_LTD[len(Ae_index_LTD) - 1].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
         elif vltp != 0 and vltd == 0:  # half nonlinear update
             if torch.numel(update_index_and_time) == 0:
@@ -449,76 +447,76 @@ class NonLinear(LearningRule):
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_LTP_time = time  # latest update time
-                    Ae_STDP_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
-                if Ae_LTP_time < pulse_time_LTP:
-                    if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
+                    Ae_time_LTP = time  # latest update time
+                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                if Ae_time_LTP < pulse_time_LTP:
+                    if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
-                            if i in X_cause_index and len(Ae_STDP_index) > 1:
-                                for k in range(len(Ae_STDP_index) - 1):
-                                    Ae_cur_index = Ae_STDP_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                        i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
-                            elif i in X_cause_index and len(Ae_STDP_index) == 1:
-                                Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                    i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                            if i in X_cause_index and len(Ae_index_LTP) > 1:
+                                for k in range(len(Ae_index_LTP) - 1):
+                                    Ae_index_CUR = Ae_index_LTP[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                        i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
+                            elif i in X_cause_index and len(Ae_index_LTP) == 1:
+                                Ae_index_CUR = Ae_index_LTP[len(Ae_index_LTP) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                    i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
-                elif Ae_LTP_time >= pulse_time_LTP:
-                    if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
+                elif Ae_time_LTP >= pulse_time_LTP:
+                    if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:, [1]].view(
                             -1)  # STDP causing spikes
                         for i in range(X_size):
-                            if i in X_cause_index and len(Ae_STDP_index) > 1:
-                                for k in range(len(Ae_STDP_index) - 1):
-                                    Ae_cur_index = Ae_STDP_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                        i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
-                            elif i in X_cause_index and len(Ae_STDP_index) == 1:
-                                Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                    i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                            if i in X_cause_index and len(Ae_index_LTP) > 1:
+                                for k in range(len(Ae_index_LTP) - 1):
+                                    Ae_index_CUR = Ae_index_LTP[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                        i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
+                            elif i in X_cause_index and len(Ae_index_LTP) == 1:
+                                Ae_index_CUR = Ae_index_LTP[len(Ae_index_LTP) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                    i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_STDP_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                            Ae_STDP_index_LTD = torch.nonzero(
+                            Ae_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_index_LTD = torch.nonzero(
                                 target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
-                            if torch.sum(source_r[Ae_STDP_time_LTD:Ae_STDP_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                            if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
-                                    source_r[Ae_STDP_time_LTD:Ae_STDP_time_LTD + pulse_time_LTD])[:, [1]].view(
+                                    source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
                                     -1)  # STDP causing spikes
                                 for i in range(X_size):
-                                    if i in X_cause_index and len(Ae_STDP_index_LTD) > 1:
-                                        for k in range(len(Ae_STDP_index_LTD) - 1):
-                                            Ae_cur_index = Ae_STDP_index_LTD[k].item()
-                                            self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
-                                    elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
-                                        Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
-                                        self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                                    if i in X_cause_index and len(Ae_index_LTD) > 1:
+                                        for k in range(len(Ae_index_LTD) - 1):
+                                            Ae_index_CUR = Ae_index_LTD[k].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
+                                    elif i in X_cause_index and len(Ae_index_LTD) == 1:
+                                        Ae_index_CUR = Ae_index_LTD[len(Ae_index_LTD) - 1].item()
+                                        self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_STDP_time_LTD = j  # latest update time of LTD
-                                Ae_STDP_index_LTD = torch.nonzero(target_r[j]).view(
+                                Ae_time_LTD = j  # latest update time of LTD
+                                Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # latest update nueron index of LTD
-                                if torch.sum(source_r[Ae_STDP_time_LTD:time]) > 0:  # LTD
-                                    X_cause_index = torch.nonzero(source_r[Ae_STDP_time_LTD:time])[:, [1]].view(
+                                if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
+                                    X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
                                     for i in range(X_size):
-                                        if i in X_cause_index and len(Ae_STDP_index_LTD) > 1:
-                                            for k in range(len(Ae_STDP_index_LTD) - 1):
-                                                Ae_cur_index = Ae_STDP_index_LTD[k].item()
-                                                self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
-                                        elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
-                                            Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
-                                            self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                                        if i in X_cause_index and len(Ae_index_LTD) > 1:
+                                            for k in range(len(Ae_index_LTD) - 1):
+                                                Ae_index_CUR = Ae_index_LTD[k].item()
+                                                self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
+                                        elif i in X_cause_index and len(Ae_index_LTD) == 1:
+                                            Ae_index_CUR = Ae_index_LTD[len(Ae_index_LTD) - 1].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
         elif vltp == 0 and vltd != 0:  # half nonlinear update
             if torch.numel(update_index_and_time) == 0:
@@ -526,86 +524,86 @@ class NonLinear(LearningRule):
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_LTP_time = time  # latest update time
-                    Ae_STDP_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
-                if Ae_LTP_time < pulse_time_LTP:
-                    if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
+                    Ae_time_LTP = time  # latest update time
+                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                if Ae_time_LTP < pulse_time_LTP:
+                    if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
-                            if i in X_cause_index and len(Ae_STDP_index) > 1:
-                                for k in range(len(Ae_STDP_index) - 1):
-                                    Ae_cur_index = Ae_STDP_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
-                            elif i in X_cause_index and len(Ae_STDP_index) == 1:
-                                Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                            if i in X_cause_index and len(Ae_index_LTP) > 1:
+                                for k in range(len(Ae_index_LTP) - 1):
+                                    Ae_index_CUR = Ae_index_LTP[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
+                            elif i in X_cause_index and len(Ae_index_LTP) == 1:
+                                Ae_index_CUR = Ae_index_LTP[len(Ae_index_LTP) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
-                elif Ae_LTP_time >= pulse_time_LTP:
-                    if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
+                elif Ae_time_LTP >= pulse_time_LTP:
+                    if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:, [1]].view(
                             -1)  # STDP causing spikes
                         for i in range(X_size):
-                            if i in X_cause_index and len(Ae_STDP_index) > 1:
-                                for k in range(len(Ae_STDP_index) - 1):
-                                    Ae_cur_index = Ae_STDP_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
-                            elif i in X_cause_index and len(Ae_STDP_index) == 1:
-                                Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                            if i in X_cause_index and len(Ae_index_LTP) > 1:
+                                for k in range(len(Ae_index_LTP) - 1):
+                                    Ae_index_CUR = Ae_index_LTP[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
+                            elif i in X_cause_index and len(Ae_index_LTP) == 1:
+                                Ae_index_CUR = Ae_index_LTP[len(Ae_index_LTP) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_STDP_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                            Ae_STDP_index_LTD = torch.nonzero(
+                            Ae_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_index_LTD = torch.nonzero(
                                 target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
-                            if torch.sum(source_r[Ae_STDP_time_LTD:Ae_STDP_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                            if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
-                                    source_r[Ae_STDP_time_LTD:Ae_STDP_time_LTD + pulse_time_LTD])[:, [1]].view(
+                                    source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
                                     -1)  # STDP causing spikes
                                 for i in range(X_size):
-                                    if i in X_cause_index and len(Ae_STDP_index_LTD) > 1:
-                                        for k in range(len(Ae_STDP_index_LTD) - 1):
-                                            Ae_cur_index = Ae_STDP_index_LTD[k].item()
-                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                                   g1ltd[i, Ae_cur_index] - gmax[
-                                                                                       i, Ae_cur_index]) * (
+                                    if i in X_cause_index and len(Ae_index_LTD) > 1:
+                                        for k in range(len(Ae_index_LTD) - 1):
+                                            Ae_index_CUR = Ae_index_LTD[k].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
+                                                                                   g1ltd[i, Ae_index_CUR] - gmax[
+                                                                                       i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
-                                    elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
-                                        Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
-                                        self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
+                                    elif i in X_cause_index and len(Ae_index_LTD) == 1:
+                                        Ae_index_CUR = Ae_index_LTD[len(Ae_index_LTD) - 1].item()
+                                        self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
                                                                                g1ltd[
-                                                                                   i, Ae_cur_index] - gmax[
-                                                                                   i, Ae_cur_index]) * (
+                                                                                   i, Ae_index_CUR] - gmax[
+                                                                                   i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_STDP_time_LTD = j  # latest update time of LTD
-                                Ae_STDP_index_LTD = torch.nonzero(target_r[j]).view(
+                                Ae_time_LTD = j  # latest update time of LTD
+                                Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # latest update nueron index of LTD
-                                if torch.sum(source_r[Ae_STDP_time_LTD:time]) > 0:  # LTD
-                                    X_cause_index = torch.nonzero(source_r[Ae_STDP_time_LTD:time])[:, [1]].view(
+                                if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
+                                    X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
                                     for i in range(X_size):
-                                        if i in X_cause_index and len(Ae_STDP_index_LTD) > 1:
-                                            for k in range(len(Ae_STDP_index_LTD) - 1):
-                                                Ae_cur_index = Ae_STDP_index_LTD[k].item()
-                                                self.connection.w[i, Ae_cur_index] -= (self.connection.w[
-                                                                                           i, Ae_cur_index] + g1ltd[
-                                                                                           i, Ae_cur_index] - gmax[
-                                                                                           i, Ae_cur_index]) * (
+                                        if i in X_cause_index and len(Ae_index_LTD) > 1:
+                                            for k in range(len(Ae_index_LTD) - 1):
+                                                Ae_index_CUR = Ae_index_LTD[k].item()
+                                                self.connection.w[i, Ae_index_CUR] -= (self.connection.w[
+                                                                                           i, Ae_index_CUR] + g1ltd[
+                                                                                           i, Ae_index_CUR] - gmax[
+                                                                                           i, Ae_index_CUR]) * (
                                                                                               1 - np.exp(
                                                                                           vltd / 256))
-                                        elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
-                                            Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
-                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                                   g1ltd[i, Ae_cur_index] - gmax[
-                                                                                       i, Ae_cur_index]) * (
+                                        elif i in X_cause_index and len(Ae_index_LTD) == 1:
+                                            Ae_index_CUR = Ae_index_LTD[len(Ae_index_LTD) - 1].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
+                                                                                   g1ltd[i, Ae_index_CUR] - gmax[
+                                                                                       i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
 
         elif vltp != 0 and vltd != 0:  # fully nonlinear update
@@ -614,86 +612,86 @@ class NonLinear(LearningRule):
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_LTP_time = time  # latest update time
-                    Ae_STDP_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
-                if Ae_LTP_time < pulse_time_LTP:
-                    if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
+                    Ae_time_LTP = time  # latest update time
+                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                if Ae_time_LTP < pulse_time_LTP:
+                    if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
-                            if i in X_cause_index and len(Ae_STDP_index) > 1:
-                                for k in range(len(Ae_STDP_index) - 1):
-                                    Ae_cur_index = Ae_STDP_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                        i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
-                            elif i in X_cause_index and len(Ae_STDP_index) == 1:
-                                Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                    i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                            if i in X_cause_index and len(Ae_index_LTP) > 1:
+                                for k in range(len(Ae_index_LTP) - 1):
+                                    Ae_index_CUR = Ae_index_LTP[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                        i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
+                            elif i in X_cause_index and len(Ae_index_LTP) == 1:
+                                Ae_index_CUR = Ae_index_LTP[len(Ae_index_LTP) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                    i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
-                elif Ae_LTP_time >= pulse_time_LTP:
-                    if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
+                elif Ae_time_LTP >= pulse_time_LTP:
+                    if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:, [1]].view(
                             -1)  # STDP causing spikes
                         for i in range(X_size):
-                            if i in X_cause_index and len(Ae_STDP_index) > 1:
-                                for k in range(len(Ae_STDP_index) - 1):
-                                    Ae_cur_index = Ae_STDP_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                        i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
-                            elif i in X_cause_index and len(Ae_STDP_index) == 1:
-                                Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                    i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                            if i in X_cause_index and len(Ae_index_LTP) > 1:
+                                for k in range(len(Ae_index_LTP) - 1):
+                                    Ae_index_CUR = Ae_index_LTP[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                        i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
+                            elif i in X_cause_index and len(Ae_index_LTP) == 1:
+                                Ae_index_CUR = Ae_index_LTP[len(Ae_index_LTP) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                    i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_STDP_time_LTD = time - pulse_time_LTD  # latest update time of LTD
-                            Ae_STDP_index_LTD = torch.nonzero(
+                            Ae_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                            Ae_index_LTD = torch.nonzero(
                                 target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
-                            if torch.sum(source_r[Ae_STDP_time_LTD:Ae_STDP_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                            if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
-                                    source_r[Ae_STDP_time_LTD:Ae_STDP_time_LTD + pulse_time_LTD])[:, [1]].view(
+                                    source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
                                     -1)  # STDP causing spikes
                                 for i in range(X_size):
-                                    if i in X_cause_index and len(Ae_STDP_index_LTD) > 1:
-                                        for k in range(len(Ae_STDP_index_LTD) - 1):
-                                            Ae_cur_index = Ae_STDP_index_LTD[k].item()
-                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                                   g1ltd[i, Ae_cur_index] - gmax[
-                                                                                       i, Ae_cur_index]) * (
+                                    if i in X_cause_index and len(Ae_index_LTD) > 1:
+                                        for k in range(len(Ae_index_LTD) - 1):
+                                            Ae_index_CUR = Ae_index_LTD[k].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
+                                                                                   g1ltd[i, Ae_index_CUR] - gmax[
+                                                                                       i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
-                                    elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
-                                        Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
-                                        self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
+                                    elif i in X_cause_index and len(Ae_index_LTD) == 1:
+                                        Ae_index_CUR = Ae_index_LTD[len(Ae_index_LTD) - 1].item()
+                                        self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
                                                                                g1ltd[
-                                                                                   i, Ae_cur_index] - gmax[
-                                                                                   i, Ae_cur_index]) * (
+                                                                                   i, Ae_index_CUR] - gmax[
+                                                                                   i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_STDP_time_LTD = j  # latest update time of LTD
-                                Ae_STDP_index_LTD = torch.nonzero(target_r[j]).view(
+                                Ae_time_LTD = j  # latest update time of LTD
+                                Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # latest update nueron index of LTD
-                                if torch.sum(source_r[Ae_STDP_time_LTD:time]) > 0:  # LTD
-                                    X_cause_index = torch.nonzero(source_r[Ae_STDP_time_LTD:time])[:, [1]].view(
+                                if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
+                                    X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
                                     for i in range(X_size):
-                                        if i in X_cause_index and len(Ae_STDP_index_LTD) > 1:
-                                            for k in range(len(Ae_STDP_index_LTD) - 1):
-                                                Ae_cur_index = Ae_STDP_index_LTD[k].item()
-                                                self.connection.w[i, Ae_cur_index] -= (self.connection.w[
-                                                                                           i, Ae_cur_index] + g1ltd[
-                                                                                           i, Ae_cur_index] - gmax[
-                                                                                           i, Ae_cur_index]) * (
+                                        if i in X_cause_index and len(Ae_index_LTD) > 1:
+                                            for k in range(len(Ae_index_LTD) - 1):
+                                                Ae_index_CUR = Ae_index_LTD[k].item()
+                                                self.connection.w[i, Ae_index_CUR] -= (self.connection.w[
+                                                                                           i, Ae_index_CUR] + g1ltd[
+                                                                                           i, Ae_index_CUR] - gmax[
+                                                                                           i, Ae_index_CUR]) * (
                                                                                               1 - np.exp(
                                                                                           vltd / 256))
-                                        elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
-                                            Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
-                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                                   g1ltd[i, Ae_cur_index] - gmax[
-                                                                                       i, Ae_cur_index]) * (
+                                        elif i in X_cause_index and len(Ae_index_LTD) == 1:
+                                            Ae_index_CUR = Ae_index_LTD[len(Ae_index_LTD) - 1].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
+                                                                                   g1ltd[i, Ae_index_CUR] - gmax[
+                                                                                       i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
 
         super().update()
@@ -734,11 +732,11 @@ class NonLinear(LearningRule):
         update_time_index = 0
         update_num_index = 0
         X_cause_index = 0
-        Ae_LTP_time = 0
-        Ae_STDP_time_LTD = 0
-        Ae_STDP_index = 0
-        Ae_STDP_index_LTD = 0
-        Ae_cur_index = 0
+        Ae_time_LTP = 0
+        Ae_time_LTD = 0
+        Ae_index_LTP = 0
+        Ae_index_LTD = 0
+        Ae_index_CUR = 0
 
         # dead synapses variables
         rand_i = []
@@ -747,7 +745,7 @@ class NonLinear(LearningRule):
         synapse_exc = 10
 
         # Factors for nonlinear update.
-        vltp = -1.0
+        vltp = 0.0
         vltd = 0.0
         b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
@@ -755,7 +753,7 @@ class NonLinear(LearningRule):
 
         # boolean varibles for addtional feature
         grand = True  # random distribution Gmax and Gmin
-        dead_synapses = True  # dead synapses simulation
+        dead_synapses = False  # dead synapses simulation
 
         if grand == True:
             gmax = kwargs.get('rand_gmax')
@@ -778,36 +776,36 @@ class NonLinear(LearningRule):
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_LTP_time = time  # latest update time
+                    Ae_time_LTP = time  # latest update time
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
-                if Ae_LTP_time < pulse_time_LTP:
-                    if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
+                if Ae_time_LTP < pulse_time_LTP:
+                    if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
-                                    Ae_cur_index = Ae_stdp_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                    Ae_index_CUR = Ae_stdp_index[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                               gmin[i, Ae_index_CUR]) / 256
                             elif i in X_cause_index and len(Ae_stdp_index) == 1:
-                                Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                                Ae_index_CUR = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
-                elif Ae_LTP_time >= pulse_time_LTP:
-                    if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
+                elif Ae_time_LTP >= pulse_time_LTP:
+                    if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:, [1]].view(
                             -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
-                                    Ae_cur_index = Ae_stdp_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                    Ae_index_CUR = Ae_stdp_index[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                               gmin[i, Ae_index_CUR]) / 256
                             elif i in X_cause_index and len(Ae_stdp_index) == 1:
-                                Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                                Ae_index_CUR = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
@@ -821,13 +819,13 @@ class NonLinear(LearningRule):
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
-                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
-                                            self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                   gmin[i, Ae_cur_index]) / 256
+                                            Ae_index_CUR = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                                   gmin[i, Ae_index_CUR]) / 256
                                     elif i in X_cause_index and len(Ae_stdp_index_LTD) == 1:
-                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                        self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                        Ae_index_CUR = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
+                                        self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                               gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -841,13 +839,13 @@ class NonLinear(LearningRule):
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
-                                                Ae_cur_index = Ae_stdp_index_LTD[k].item()
-                                                self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                       gmin[i, Ae_cur_index]) / 256
+                                                Ae_index_CUR = Ae_stdp_index_LTD[k].item()
+                                                self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                                       gmin[i, Ae_index_CUR]) / 256
                                         elif i in X_cause_index and len(Ae_stdp_index_LTD) == 1:
-                                            Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                            self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                   gmin[i, Ae_cur_index]) / 256
+                                            Ae_index_CUR = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                                   gmin[i, Ae_index_CUR]) / 256
 
         elif vltp != 0 and vltd == 0:  # half nonlinear update
             if torch.numel(update_index_and_time) == 0:
@@ -855,36 +853,36 @@ class NonLinear(LearningRule):
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_LTP_time = time  # latest update time
+                    Ae_time_LTP = time  # latest update time
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
-                if Ae_LTP_time < pulse_time_LTP:
-                    if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
+                if Ae_time_LTP < pulse_time_LTP:
+                    if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
-                                    Ae_cur_index = Ae_stdp_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                        i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                                    Ae_index_CUR = Ae_stdp_index[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                        i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
                             elif i in X_cause_index and len(Ae_stdp_index) == 1:
-                                Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                    i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                                Ae_index_CUR = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                    i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
-                elif Ae_LTP_time >= pulse_time_LTP:
-                    if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
+                elif Ae_time_LTP >= pulse_time_LTP:
+                    if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:, [1]].view(
                             -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
-                                    Ae_cur_index = Ae_stdp_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                        i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                                    Ae_index_CUR = Ae_stdp_index[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                        i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
                             elif i in X_cause_index and len(Ae_stdp_index) == 1:
-                                Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                    i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                                Ae_index_CUR = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                    i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
@@ -898,13 +896,13 @@ class NonLinear(LearningRule):
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
-                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
-                                            self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                   gmin[i, Ae_cur_index]) / 256
+                                            Ae_index_CUR = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                                   gmin[i, Ae_index_CUR]) / 256
                                     elif i in X_cause_index and len(Ae_stdp_index_LTD) == 1:
-                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                        self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                        Ae_index_CUR = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
+                                        self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                               gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -918,13 +916,13 @@ class NonLinear(LearningRule):
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
-                                                Ae_cur_index = Ae_stdp_index_LTD[k].item()
-                                                self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                       gmin[i, Ae_cur_index]) / 256
+                                                Ae_index_CUR = Ae_stdp_index_LTD[k].item()
+                                                self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                                       gmin[i, Ae_index_CUR]) / 256
                                         elif i in X_cause_index and len(Ae_stdp_index_LTD) == 1:
-                                            Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                            self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                   gmin[i, Ae_cur_index]) / 256
+                                            Ae_index_CUR = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
+                                                                                   gmin[i, Ae_index_CUR]) / 256
 
         elif vltp == 0 and vltd != 0:  # half nonlinear update
             if torch.numel(update_index_and_time) == 0:
@@ -932,36 +930,36 @@ class NonLinear(LearningRule):
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_LTP_time = time  # latest update time
+                    Ae_time_LTP = time  # latest update time
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
-                if Ae_LTP_time < pulse_time_LTP:
-                    if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
+                if Ae_time_LTP < pulse_time_LTP:
+                    if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
-                                    Ae_cur_index = Ae_stdp_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                    Ae_index_CUR = Ae_stdp_index[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                               gmin[i, Ae_index_CUR]) / 256
                             elif i in X_cause_index and len(Ae_stdp_index) == 1:
-                                Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                                Ae_index_CUR = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
-                elif Ae_LTP_time >= pulse_time_LTP:
-                    if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
+                elif Ae_time_LTP >= pulse_time_LTP:
+                    if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:, [1]].view(
                             -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
-                                    Ae_cur_index = Ae_stdp_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                    Ae_index_CUR = Ae_stdp_index[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                               gmin[i, Ae_index_CUR]) / 256
                             elif i in X_cause_index and len(Ae_stdp_index) == 1:
-                                Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                           gmin[i, Ae_cur_index]) / 256
+                                Ae_index_CUR = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += b * (gmax[i, Ae_index_CUR] -
+                                                                           gmin[i, Ae_index_CUR]) / 256
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
@@ -975,17 +973,17 @@ class NonLinear(LearningRule):
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
-                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
-                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                                   g1ltd[i, Ae_cur_index] - gmax[
-                                                                                       i, Ae_cur_index]) * (
+                                            Ae_index_CUR = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
+                                                                                   g1ltd[i, Ae_index_CUR] - gmax[
+                                                                                       i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
                                     elif i in X_cause_index and len(Ae_stdp_index_LTD) == 1:
-                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                        self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
+                                        Ae_index_CUR = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
+                                        self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
                                                                                g1ltd[
-                                                                                   i, Ae_cur_index] - gmax[
-                                                                                   i, Ae_cur_index]) * (
+                                                                                   i, Ae_index_CUR] - gmax[
+                                                                                   i, Ae_index_CUR]) * (
                                                                                       1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
@@ -1000,18 +998,18 @@ class NonLinear(LearningRule):
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
-                                                Ae_cur_index = Ae_stdp_index_LTD[k].item()
-                                                self.connection.w[i, Ae_cur_index] -= (self.connection.w[
-                                                                                           i, Ae_cur_index] + g1ltd[
-                                                                                           i, Ae_cur_index] - gmax[
-                                                                                           i, Ae_cur_index]) * (
+                                                Ae_index_CUR = Ae_stdp_index_LTD[k].item()
+                                                self.connection.w[i, Ae_index_CUR] -= (self.connection.w[
+                                                                                           i, Ae_index_CUR] + g1ltd[
+                                                                                           i, Ae_index_CUR] - gmax[
+                                                                                           i, Ae_index_CUR]) * (
                                                                                               1 - np.exp(
                                                                                           vltd / 256))
                                         elif i in X_cause_index and len(Ae_stdp_index_LTD) == 1:
-                                            Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                                   g1ltd[i, Ae_cur_index] - gmax[
-                                                                                       i, Ae_cur_index]) * (
+                                            Ae_index_CUR = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
+                                                                                   g1ltd[i, Ae_index_CUR] - gmax[
+                                                                                       i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
 
         elif vltp != 0 and vltd != 0:  # fully nonlinear update
@@ -1020,36 +1018,36 @@ class NonLinear(LearningRule):
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_LTP_time = time  # latest update time
+                    Ae_time_LTP = time  # latest update time
                     Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
-                if Ae_LTP_time < pulse_time_LTP:
-                    if torch.sum(source_r[0:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[0:Ae_LTP_time])[:, [1]].view(-1)  # STDP causing spikes
+                if Ae_time_LTP < pulse_time_LTP:
+                    if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
-                                    Ae_cur_index = Ae_stdp_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                        i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                                    Ae_index_CUR = Ae_stdp_index[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                        i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
                             elif i in X_cause_index and len(Ae_stdp_index) == 1:
-                                Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                    i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                                Ae_index_CUR = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                    i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
-                elif Ae_LTP_time >= pulse_time_LTP:
-                    if torch.sum(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time]) > 0:  # LTP
-                        X_cause_index = torch.nonzero(source_r[Ae_LTP_time - pulse_time_LTP:Ae_LTP_time])[:, [1]].view(
+                elif Ae_time_LTP >= pulse_time_LTP:
+                    if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:, [1]].view(
                             -1)  # STDP causing spikes
                         for i in range(X_size):
                             if i in X_cause_index and len(Ae_stdp_index) > 1:
                                 for k in range(len(Ae_stdp_index) - 1):
-                                    Ae_cur_index = Ae_stdp_index[k].item()
-                                    self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                        i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                                    Ae_index_CUR = Ae_stdp_index[k].item()
+                                    self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                        i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
                             elif i in X_cause_index and len(Ae_stdp_index) == 1:
-                                Ae_cur_index = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
-                                self.connection.w[i, Ae_cur_index] += (-self.connection.w[i, Ae_cur_index] + g1ltp[
-                                    i, Ae_cur_index] + gmin[i, Ae_cur_index]) * (1 - np.exp(-vltp * b / 256))
+                                Ae_index_CUR = Ae_stdp_index[len(Ae_stdp_index) - 1].item()
+                                self.connection.w[i, Ae_index_CUR] += (-self.connection.w[i, Ae_index_CUR] + g1ltp[
+                                    i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
@@ -1063,17 +1061,17 @@ class NonLinear(LearningRule):
                                 for i in range(X_size):
                                     if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                         for k in range(len(Ae_stdp_index_LTD) - 1):
-                                            Ae_cur_index = Ae_stdp_index_LTD[k].item()
-                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                                   g1ltd[i, Ae_cur_index] - gmax[
-                                                                                       i, Ae_cur_index]) * (
+                                            Ae_index_CUR = Ae_stdp_index_LTD[k].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
+                                                                                   g1ltd[i, Ae_index_CUR] - gmax[
+                                                                                       i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
                                     elif i in X_cause_index and len(Ae_stdp_index_LTD) == 1:
-                                        Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                        self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
+                                        Ae_index_CUR = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
+                                        self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
                                                                                g1ltd[
-                                                                                   i, Ae_cur_index] - gmax[
-                                                                                   i, Ae_cur_index]) * (
+                                                                                   i, Ae_index_CUR] - gmax[
+                                                                                   i, Ae_index_CUR]) * (
                                                                                       1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
@@ -1088,18 +1086,18 @@ class NonLinear(LearningRule):
                                     for i in range(X_size):
                                         if i in X_cause_index and len(Ae_stdp_index_LTD) > 1:
                                             for k in range(len(Ae_stdp_index_LTD) - 1):
-                                                Ae_cur_index = Ae_stdp_index_LTD[k].item()
-                                                self.connection.w[i, Ae_cur_index] -= (self.connection.w[
-                                                                                           i, Ae_cur_index] + g1ltd[
-                                                                                           i, Ae_cur_index] - gmax[
-                                                                                           i, Ae_cur_index]) * (
+                                                Ae_index_CUR = Ae_stdp_index_LTD[k].item()
+                                                self.connection.w[i, Ae_index_CUR] -= (self.connection.w[
+                                                                                           i, Ae_index_CUR] + g1ltd[
+                                                                                           i, Ae_index_CUR] - gmax[
+                                                                                           i, Ae_index_CUR]) * (
                                                                                               1 - np.exp(
                                                                                           vltd / 256))
                                         elif i in X_cause_index and len(Ae_stdp_index_LTD) == 1:
-                                            Ae_cur_index = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
-                                            self.connection.w[i, Ae_cur_index] -= (self.connection.w[i, Ae_cur_index] +
-                                                                                   g1ltd[i, Ae_cur_index] - gmax[
-                                                                                       i, Ae_cur_index]) * (
+                                            Ae_index_CUR = Ae_stdp_index_LTD[len(Ae_stdp_index_LTD) - 1].item()
+                                            self.connection.w[i, Ae_index_CUR] -= (self.connection.w[i, Ae_index_CUR] +
+                                                                                   g1ltd[i, Ae_index_CUR] - gmax[
+                                                                                       i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
 
         # Reshaping spike traces and spike occurrences.
