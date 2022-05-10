@@ -89,7 +89,7 @@ class LearningRule(ABC):
 
         # Bound weights.
         if (
-            self.connection.wmin != -np.inf or self.connection.wmax != np.inf
+            self.connection.wmin != np.inf or self.connection.wmax != -np.inf
         ) and not isinstance(self, NoOp):
             self.connection.w.clamp_(self.connection.wmin, self.connection.wmax)
 
@@ -293,7 +293,7 @@ class NonLinear(LearningRule):
                 "This learning rule is not supported for this Connection type."
             )
 
-    def _connection_update(self, **kwargs) -> None:
+    def _connection_update(self ,**kwargs) -> None:
         # language=rst
         """
         NonLinear learning rule for ``Connection`` subclass of ``AbstractConnection``
@@ -307,6 +307,7 @@ class NonLinear(LearningRule):
         X_size = torch.numel(source_s)
         Ae_size = torch.numel(target_s)
 
+        # spike recording variables
         s_record = kwargs.get('s_record', [])
         t_record = kwargs.get('t_record', [])
         simulation_time = kwargs.get('simulation_time')
@@ -315,10 +316,12 @@ class NonLinear(LearningRule):
         source_r = torch.tensor(s_record)
         target_r = torch.tensor(t_record)
 
+        # time variables
         time = len(source_r) - 1
         pulse_time_LTP = 45  # change this factcor when you want to change LTP time slot
         pulse_time_LTD = 45   # change this factcor when you want to change LTD time slot
 
+        #STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
         update_time_index = 0
         update_num_index = 0
@@ -329,13 +332,22 @@ class NonLinear(LearningRule):
         Ae_STDP_index_LTD = 0
         Ae_cur_index = 0
 
+        # dead synapses variables
+        rand_i = []
+        rand_j = []
+        synapse_input = 10
+        synapse_exc = 10
+
         # Factors for nonlinear update.
-        vltp = 0.0
-        vltd = 100.0
-        b = 0.001
+        vltp = -1.0
+        vltd = 0.0
+        b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
+
+        # boolean varibles for addtional feature
         grand = True  # random distribution Gmax and Gmin
+        dead_synapses = True # dead synapses simulation
 
         if grand == True:
             gmax = kwargs.get('rand_gmax')
@@ -343,6 +355,16 @@ class NonLinear(LearningRule):
 
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
+
+        if dead_synapses == True:
+            rand_i = kwargs.get('rand_i')
+            rand_j = kwargs.get('rand_j')
+
+            for i in range(synapse_input):
+                for j in range(synapse_exc):
+                    self.connection.w[rand_i[i], rand_j[j]] = 0
+
+        a = self.connection.w
 
         if vltp == 0 and vltd == 0:  # fully linear update
             if torch.numel(update_index_and_time) == 0:
@@ -360,7 +382,7 @@ class NonLinear(LearningRule):
                                 for k in range(len(Ae_STDP_index) - 1):
                                     Ae_cur_index = Ae_STDP_index[k].item()
                                     self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
                             elif i in X_cause_index and len(Ae_STDP_index) == 1:
                                 Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
                                 self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
@@ -375,7 +397,7 @@ class NonLinear(LearningRule):
                                 for k in range(len(Ae_STDP_index) - 1):
                                     Ae_cur_index = Ae_STDP_index[k].item()
                                     self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
                             elif i in X_cause_index and len(Ae_STDP_index) == 1:
                                 Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
                                 self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
@@ -395,11 +417,11 @@ class NonLinear(LearningRule):
                                         for k in range(len(Ae_STDP_index_LTD) - 1):
                                             Ae_cur_index = Ae_STDP_index_LTD[k].item()
                                             self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                   gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
                                     elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
                                         Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -415,11 +437,11 @@ class NonLinear(LearningRule):
                                             for k in range(len(Ae_STDP_index_LTD) - 1):
                                                 Ae_cur_index = Ae_STDP_index_LTD[k].item()
                                                 self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                       gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
                                         elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
                                             Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
                                             self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                   gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
 
         elif vltp != 0 and vltd == 0:  # half nonlinear update
             if torch.numel(update_index_and_time) == 0:
@@ -472,11 +494,11 @@ class NonLinear(LearningRule):
                                         for k in range(len(Ae_STDP_index_LTD) - 1):
                                             Ae_cur_index = Ae_STDP_index_LTD[k].item()
                                             self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                   gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
                                     elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
                                         Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
                                         self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -492,11 +514,11 @@ class NonLinear(LearningRule):
                                             for k in range(len(Ae_STDP_index_LTD) - 1):
                                                 Ae_cur_index = Ae_STDP_index_LTD[k].item()
                                                 self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                       gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
                                         elif i in X_cause_index and len(Ae_STDP_index_LTD) == 1:
                                             Ae_cur_index = Ae_STDP_index_LTD[len(Ae_STDP_index_LTD) - 1].item()
                                             self.connection.w[i, Ae_cur_index] -= (gmax[i, Ae_cur_index] -
-                                                                                   gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
 
         elif vltp == 0 and vltd != 0:  # half nonlinear update
             if torch.numel(update_index_and_time) == 0:
@@ -514,7 +536,7 @@ class NonLinear(LearningRule):
                                 for k in range(len(Ae_STDP_index) - 1):
                                     Ae_cur_index = Ae_STDP_index[k].item()
                                     self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
                             elif i in X_cause_index and len(Ae_STDP_index) == 1:
                                 Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
                                 self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
@@ -529,7 +551,7 @@ class NonLinear(LearningRule):
                                 for k in range(len(Ae_STDP_index) - 1):
                                     Ae_cur_index = Ae_STDP_index[k].item()
                                     self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
-                                                                               gmin[i, Ae_cur_index]) / 256
+                                                                           gmin[i, Ae_cur_index]) / 256
                             elif i in X_cause_index and len(Ae_STDP_index) == 1:
                                 Ae_cur_index = Ae_STDP_index[len(Ae_STDP_index) - 1].item()
                                 self.connection.w[i, Ae_cur_index] += b * (gmax[i, Ae_cur_index] -
@@ -558,7 +580,7 @@ class NonLinear(LearningRule):
                                                                                g1ltd[
                                                                                    i, Ae_cur_index] - gmax[
                                                                                    i, Ae_cur_index]) * (
-                                                                                      1 - np.exp(vltd / 256))
+                                                                                          1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -646,7 +668,7 @@ class NonLinear(LearningRule):
                                                                                g1ltd[
                                                                                    i, Ae_cur_index] - gmax[
                                                                                    i, Ae_cur_index]) * (
-                                                                                      1 - np.exp(vltd / 256))
+                                                                                          1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
@@ -693,6 +715,7 @@ class NonLinear(LearningRule):
         X_size = torch.numel(source_s)
         Ae_size = torch.numel(target_s)
 
+        # spike recording variables
         s_record = kwargs.get('s_record', [])
         t_record = kwargs.get('t_record', [])
         simulation_time = kwargs.get('simulation_time')
@@ -701,27 +724,38 @@ class NonLinear(LearningRule):
         source_r = torch.tensor(s_record)
         target_r = torch.tensor(t_record)
 
+        # time variables
         time = len(source_r) - 1
-        pulse_time_LTP = 45  # changt this factcor when you want to change LTP time slot
-        pulse_time_LTD = 45  # changt this factcor when you want to change LTD time slot
+        pulse_time_LTP = 45  # change this factcor when you want to change LTP time slot
+        pulse_time_LTD = 45  # change this factcor when you want to change LTD time slot
 
+        # STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
         update_time_index = 0
         update_num_index = 0
         X_cause_index = 0
         Ae_LTP_time = 0
-        Ae_stdp_time_LTD = 0
-        Ae_stdp_index = 0
-        Ae_stdp_index_LTD = 0
+        Ae_STDP_time_LTD = 0
+        Ae_STDP_index = 0
+        Ae_STDP_index_LTD = 0
         Ae_cur_index = 0
 
+        # dead synapses variables
+        rand_i = []
+        rand_j = []
+        synapse_input = 10
+        synapse_exc = 10
+
         # Factors for nonlinear update.
-        vltp = 0.0
+        vltp = -1.0
         vltd = 0.0
         b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
+
+        # boolean varibles for addtional feature
         grand = True  # random distribution Gmax and Gmin
+        dead_synapses = True  # dead synapses simulation
 
         if grand == True:
             gmax = kwargs.get('rand_gmax')
@@ -729,6 +763,14 @@ class NonLinear(LearningRule):
 
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
+
+        if dead_synapses == True:
+            rand_i = kwargs.get('rand_i')
+            rand_j = kwargs.get('rand_j')
+
+        for i in range(synapse_input):
+            for j in range(synapse_exc):
+                self.connection.w[rand_i[i], rand_j[j]] = 0
 
         if vltp == 0 and vltd == 0:  # fully linear update
             if torch.numel(update_index_and_time) == 0:
@@ -1090,6 +1132,7 @@ class NonLinear(LearningRule):
             self.connection.w += self.nu[1] * post.view(self.connection.w.size())
 
         super().update()
+
 
 class WeightDependentPostPre(LearningRule):
     # language=rst
@@ -1646,10 +1689,10 @@ class MSTDPET(LearningRule):
 
         # Compute weight update.
         if self.nu[0]:
-            self.connection.w += self.nu[0] * self.reduction(update, dim=0)  # self.nu[0]
+            self.connection.w += self.nu[0] * self.reduction(update, dim=0)  
 
         if self.nu[1]:
-            self.connection.w += self.nu[1] * self.reduction(update, dim=0)  # self.nu[1]
+            self.connection.w += self.nu[1] * self.reduction(update, dim=0) 
 
         # Update P^+ and P^- values.
         self.p_plus *= torch.exp(-self.connection.dt / self.tc_plus)
