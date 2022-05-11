@@ -301,13 +301,13 @@ class NonLinear(LearningRule):
         """
         batch_size = self.source.batch_size
 
-        # calculate LTP, LTD cases.
+        # Calculate LTP, LTD cases
         source_s = self.source.s.view(-1).long()
         target_s = self.target.s.view(-1).long()
         X_size = torch.numel(source_s)
         Ae_size = torch.numel(target_s)
 
-        # spike recording variables
+        # Spike recording variables
         s_record = kwargs.get('s_record', [])
         t_record = kwargs.get('t_record', [])
         simulation_time = kwargs.get('simulation_time')
@@ -316,12 +316,12 @@ class NonLinear(LearningRule):
         source_r = torch.tensor(s_record)
         target_r = torch.tensor(t_record)
 
-        # time variables
+        # Time variables
         time = len(source_r) - 1
-        pulse_time_LTP = 45  # change this factcor when you want to change LTP time slot
-        pulse_time_LTD = 45   # change this factcor when you want to change LTD time slot
+        pulse_time_LTP = 45  # Change this factcor when you want to change LTP time slot
+        pulse_time_LTD = 45   # Change this factcor when you want to change LTD time slot
 
-        #STDP time record variables
+        # STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
         update_time_index = 0
         update_num_index = 0
@@ -332,22 +332,22 @@ class NonLinear(LearningRule):
         Ae_index_LTD = 0
         Ae_index_CUR = 0
 
-        # dead synapses variables
+        # Dead synapses variables
         dead_index_input = []
         dead_index_exc = []
         dead_synapse_input_num = kwargs.get('dead_synapse_input_num')
         dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
-        # Factors for nonlinear update.
+        # Factors for nonlinear update
         vltp = 0.0
         vltd = 0.0
         b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
-        # boolean varibles for addtional feature
-        grand = True  # random distribution Gmax and Gmin
-        dead_synapses = False # dead synapses simulation
+        # Boolean varibles for addtional feature
+        grand = True  # Random distribution Gmax and Gmin
+        dead_synapses = False # Dead synapses simulation
 
         if grand == True:
             gmax = kwargs.get('rand_gmax')
@@ -364,14 +364,15 @@ class NonLinear(LearningRule):
                 for j in range(dead_synapse_exc_num):
                     self.connection.w[dead_index_input[i], dead_index_exc[j]] = 0
 
-        if vltp == 0 and vltd == 0:  # fully linear update
+        # Weight update with memristive characteristc
+        if vltp == 0 and vltd == 0:  # Fully linear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_time_LTP = time  # latest update time
-                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                    Ae_time_LTP = time  # Latest update time
+                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # Latest update nueron index
                 if Ae_time_LTP < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
@@ -402,10 +403,10 @@ class NonLinear(LearningRule):
                                                                            gmin[i, Ae_index_CUR]) / 256
 
                     if time - pulse_time_LTD > 0:
-                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
+                            Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -424,9 +425,9 @@ class NonLinear(LearningRule):
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # latest update time of LTD
+                                Ae_time_LTD = j  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
-                                    -1)  # latest update nueron index of LTD
+                                    -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
@@ -441,14 +442,14 @@ class NonLinear(LearningRule):
                                             self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
                                                                            gmin[i, Ae_index_CUR]) / 256
 
-        elif vltp != 0 and vltd == 0:  # half nonlinear update
+        elif vltp != 0 and vltd == 0:  # Half nonlinear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_time_LTP = time  # latest update time
-                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                    Ae_time_LTP = time  # Latest update time
+                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # Latest update nueron index
                 if Ae_time_LTP < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
@@ -479,10 +480,10 @@ class NonLinear(LearningRule):
                                     i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
-                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
+                            Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -501,9 +502,9 @@ class NonLinear(LearningRule):
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # latest update time of LTD
+                                Ae_time_LTD = j  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
-                                    -1)  # latest update nueron index of LTD
+                                    -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
@@ -518,14 +519,14 @@ class NonLinear(LearningRule):
                                             self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
                                                                            gmin[i, Ae_index_CUR]) / 256
 
-        elif vltp == 0 and vltd != 0:  # half nonlinear update
+        elif vltp == 0 and vltd != 0:  # Half nonlinear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_time_LTP = time  # latest update time
-                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                    Ae_time_LTP = time  # Latest update time
+                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # Latest update nueron index
                 if Ae_time_LTP < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
@@ -556,10 +557,10 @@ class NonLinear(LearningRule):
                                                                            gmin[i, Ae_index_CUR]) / 256
 
                     if time - pulse_time_LTD > 0:
-                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
+                            Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -583,9 +584,9 @@ class NonLinear(LearningRule):
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # latest update time of LTD
+                                Ae_time_LTD = j  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
-                                    -1)  # latest update nueron index of LTD
+                                    -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
@@ -606,14 +607,14 @@ class NonLinear(LearningRule):
                                                                                        i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
 
-        elif vltp != 0 and vltd != 0:  # fully nonlinear update
+        elif vltp != 0 and vltd != 0:  # Fully nonlinear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_time_LTP = time  # latest update time
-                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                    Ae_time_LTP = time  # Latest update time
+                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # Latest update nueron index
                 if Ae_time_LTP < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
@@ -644,10 +645,10 @@ class NonLinear(LearningRule):
                                     i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
-                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
+                            Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -671,9 +672,9 @@ class NonLinear(LearningRule):
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # latest update time of LTD
+                                Ae_time_LTD = j  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
-                                    -1)  # latest update nueron index of LTD
+                                    -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
@@ -702,18 +703,18 @@ class NonLinear(LearningRule):
         Post-pre learning rule for ``Conv2dConnection`` subclass of
         ``AbstractConnection`` class.
         """
-        # Get convolutional layer parameters.
+        # Get convolutional layer parameters
         out_channels, _, kernel_height, kernel_width = self.connection.w.size()
         padding, stride = self.connection.padding, self.connection.stride
         batch_size = self.source.batch_size
 
-        # calculate LTP, LTD cases.
+        # Calculate LTP, LTD cases
         source_s = self.source.s.view(-1).long()
         target_s = self.target.s.view(-1).long()
         X_size = torch.numel(source_s)
         Ae_size = torch.numel(target_s)
 
-        # spike recording variables
+        # Spike recording variables
         s_record = kwargs.get('s_record', [])
         t_record = kwargs.get('t_record', [])
         simulation_time = kwargs.get('simulation_time')
@@ -722,10 +723,10 @@ class NonLinear(LearningRule):
         source_r = torch.tensor(s_record)
         target_r = torch.tensor(t_record)
 
-        # time variables
+        # Time variables
         time = len(source_r) - 1
-        pulse_time_LTP = 45  # change this factcor when you want to change LTP time slot
-        pulse_time_LTD = 45  # change this factcor when you want to change LTD time slot
+        pulse_time_LTP = 45  # Change this factcor when you want to change LTP time slot
+        pulse_time_LTD = 45  # Change this factcor when you want to change LTD time slot
 
         # STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
@@ -738,22 +739,22 @@ class NonLinear(LearningRule):
         Ae_index_LTD = 0
         Ae_index_CUR = 0
 
-        # dead synapses variables
+        # Dead synapses variables
         dead_index_input = []
         dead_index_exc = []
         dead_synapse_input_num = kwargs.get('dead_synapse_input_num')
         dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
-        # Factors for nonlinear update.
+        # Factors for nonlinear update
         vltp = 0.0
         vltd = 0.0
         b = 1.0
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
-        # boolean varibles for addtional feature
-        grand = True  # random distribution Gmax and Gmin
-        dead_synapses = False  # dead synapses simulation
+        # Boolean varibles for addtional feature
+        grand = True  # Random distribution Gmax and Gmin
+        dead_synapses = False  # Dead synapses simulation
 
         if grand == True:
             gmax = kwargs.get('rand_gmax')
@@ -762,6 +763,7 @@ class NonLinear(LearningRule):
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
+        # Weight update with memristive characteristc
         if dead_synapses == True:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
@@ -770,14 +772,14 @@ class NonLinear(LearningRule):
                 for j in range(dead_synapse_exc_num):
                     self.connection.w[dead_index_input[i], dead_index_exc[j]] = 0
 
-        if vltp == 0 and vltd == 0:  # fully linear update
+        if vltp == 0 and vltd == 0:  # Fully linear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_time_LTP = time  # latest update time
-                    Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                    Ae_time_LTP = time  # Latest update time
+                    Ae_stdp_index = torch.nonzero(target_s).view(-1)  # Latest update nueron index
                 if Ae_time_LTP < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
@@ -808,10 +810,10 @@ class NonLinear(LearningRule):
                                                                            gmin[i, Ae_index_CUR]) / 256
 
                     if time - pulse_time_LTD > 0:
-                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_stdp_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -830,9 +832,9 @@ class NonLinear(LearningRule):
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_stdp_time_LTD = j  # latest update time of LTD
+                                Ae_stdp_time_LTD = j  # Latest update time of LTD
                                 Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
-                                    -1)  # latest update nueron index of LTD
+                                    -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
@@ -847,14 +849,14 @@ class NonLinear(LearningRule):
                                             self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
                                                                                    gmin[i, Ae_index_CUR]) / 256
 
-        elif vltp != 0 and vltd == 0:  # half nonlinear update
+        elif vltp != 0 and vltd == 0:  # Half nonlinear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_time_LTP = time  # latest update time
-                    Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                    Ae_time_LTP = time  # Latest update time
+                    Ae_stdp_index = torch.nonzero(target_s).view(-1)  # Latest update nueron index
                 if Ae_time_LTP < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
@@ -885,10 +887,10 @@ class NonLinear(LearningRule):
                                     i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
-                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_stdp_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -907,9 +909,9 @@ class NonLinear(LearningRule):
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_stdp_time_LTD = j  # latest update time of LTD
+                                Ae_stdp_time_LTD = j  # Latest update time of LTD
                                 Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
-                                    -1)  # latest update nueron index of LTD
+                                    -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
@@ -924,14 +926,14 @@ class NonLinear(LearningRule):
                                             self.connection.w[i, Ae_index_CUR] -= (gmax[i, Ae_index_CUR] -
                                                                                    gmin[i, Ae_index_CUR]) / 256
 
-        elif vltp == 0 and vltd != 0:  # half nonlinear update
+        elif vltp == 0 and vltd != 0:  # Half nonlinear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_time_LTP = time  # latest update time
-                    Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                    Ae_time_LTP = time  # Latest update time
+                    Ae_stdp_index = torch.nonzero(target_s).view(-1)  # Latest update nueron index
                 if Ae_time_LTP < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
@@ -962,10 +964,10 @@ class NonLinear(LearningRule):
                                                                            gmin[i, Ae_index_CUR]) / 256
 
                     if time - pulse_time_LTD > 0:
-                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_stdp_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -989,9 +991,9 @@ class NonLinear(LearningRule):
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_stdp_time_LTD = j  # latest update time of LTD
+                                Ae_stdp_time_LTD = j  # Latest update time of LTD
                                 Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
-                                    -1)  # latest update nueron index of LTD
+                                    -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
@@ -1012,14 +1014,14 @@ class NonLinear(LearningRule):
                                                                                        i, Ae_index_CUR]) * (
                                                                                           1 - np.exp(vltd / 256))
 
-        elif vltp != 0 and vltd != 0:  # fully nonlinear update
+        elif vltp != 0 and vltd != 0:  # Fully nonlinear update
             if torch.numel(update_index_and_time) == 0:
                 self.connection.w = self.connection.w
 
             elif torch.numel(update_index_and_time) != 0:
                 if torch.numel(torch.nonzero(target_s)) != 0:
-                    Ae_time_LTP = time  # latest update time
-                    Ae_stdp_index = torch.nonzero(target_s).view(-1)  # latest update nueron index
+                    Ae_time_LTP = time  # Latest update time
+                    Ae_stdp_index = torch.nonzero(target_s).view(-1)  # Latest update nueron index
                 if Ae_time_LTP < pulse_time_LTP:
                     if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
                         X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(-1)  # STDP causing spikes
@@ -1050,10 +1052,10 @@ class NonLinear(LearningRule):
                                     i, Ae_index_CUR] + gmin[i, Ae_index_CUR]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
-                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # checking LTD spike time
-                            Ae_stdp_time_LTD = time - pulse_time_LTD  # latest update time of LTD
+                        if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
+                            Ae_stdp_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_stdp_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # latest update nueron index of LTD
+                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_stdp_time_LTD:Ae_stdp_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -1077,9 +1079,9 @@ class NonLinear(LearningRule):
                     if time == simulation_time - 1:
                         for j in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_stdp_time_LTD = j  # latest update time of LTD
+                                Ae_stdp_time_LTD = j  # Latest update time of LTD
                                 Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
-                                    -1)  # latest update nueron index of LTD
+                                    -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
                                         -1)  # STDP causing spikes
