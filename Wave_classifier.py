@@ -41,10 +41,10 @@ parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.0009)
+parser.add_argument("--theta_plus", type=float, default=0.001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=18)
+parser.add_argument("--intensity", type=float, default=10)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -353,7 +353,7 @@ for epoch in range(n_epochs):
         if plot:
             image = batch["encoded_image"].view(256, 500)
             inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
-            input_exc_weights = network.connections[("X", "Ae")].w * 100
+            input_exc_weights = network.connections[("X", "Ae")].w
             square_weights = get_square_weights(
                input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 16
             )
