@@ -7,11 +7,10 @@ from torch.nn.modules.utils import _pair
 import torch.nn as nn
 from torchvision import models
 
-from .NLlearning import PostPre, NonLinear
+from .NLlearning import PostPre, NonLinear_Simplified, NonLinear
 from .NLnetwork import Network
-from .NLnodes import Input, McCullochPitts, ThetaPlusIFNodes, IFNodes, LIFNodes, DiehlAndCookNodes, AdaptiveLIFNodes, IzhikevichNodes, CSRMNodes, SRM0Nodes
+from .NLnodes import Input, ThetaPlusIFNodes, IFNodes, LIFNodes, CurrentLIFNodes, BoostedLIFNodes, DiehlAndCookNodes, AdaptiveLIFNodes, IzhikevichNodes, SRM0Nodes, CSRMNodes
 from .NLtopology import Connection, LocalConnection
-
 
 class TwoLayerNetwork_Nonlinear(Network):
     # language=rst
@@ -156,7 +155,7 @@ class DiehlAndCook2015_NonLinear(Network):
             sum_input=True,
             rest=-65.0, # -65.0
             reset=-60.0, # -60.0
-            thresh=-52.0, # -52.0
+            thresh=-58.0, # -52.0
             refrac=5,
             tc_decay=100.0,
             tc_trace=20.0,
@@ -167,7 +166,7 @@ class DiehlAndCook2015_NonLinear(Network):
             n=self.n_neurons,
             traces=False,
             rest=-60.0, # -60.0
-            reset=-45.0,
+            reset=-45.0, # -45.0
             thresh=-40.0, # -40.0
             tc_decay=10.0,
             refrac=2,
@@ -206,7 +205,6 @@ class DiehlAndCook2015_NonLinear(Network):
         self.add_connection(input_exc_conn, source="X", target="Ae")
         self.add_connection(exc_inh_conn, source="Ae", target="Ai")
         self.add_connection(inh_exc_conn, source="Ai", target="Ae")
-
 
 class DiehlAndCook2015v2_Nonlinear(Network):
     # language=rst
@@ -272,8 +270,6 @@ class DiehlAndCook2015v2_Nonlinear(Network):
         output_layer = DiehlAndCookNodes(
             n=self.n_neurons,
             traces=True,
-            traces_additive=True,
-            sum_input=True,
             rest=-65.0, # -65.0
             reset=-60.0, # -60.0
             thresh=-52.0, # -52.0
@@ -331,13 +327,13 @@ class TTFSNetwork_NonLinear(Network):
         wmin: float = 0.0,
         wmax: float = 1.0,
         norm: float = 78.4,
-        theta_plus: float =0.05,
-        tc_theta_decay: float =1e7,
+        theta_plus: float = 0.05,
+        tc_theta_decay: float = 1e7,
         inpt_shape: Optional[Iterable[int]] = None,
     ) -> None:
         # language=rst
         """
-        Constructor for class ``TTFSNetwork_Nonlinear``.
+        Constructor for class ``TTFSNetwork_Nonlinear_Classfication``.
 
         :param n_inpt: Number of input neurons. Matches the 1D size of the input data.
         :param n_neurons: Number of excitatory, inhibitory neurons.
@@ -399,7 +395,6 @@ class TTFSNetwork_NonLinear(Network):
 
         # Connections
         w = 0.2 * torch.rand(self.n_inpt, self.n_neurons)
-
         input_exc_conn = Connection(
             source=input_layer,
             target=exc_layer,
@@ -416,7 +411,8 @@ class TTFSNetwork_NonLinear(Network):
         exc_inh_conn = Connection(
             source=exc_layer,
             target=inh_layer,
-            w=w, wmin=0,
+            w=w,
+            wmin=0,
             wmax=self.exc
         )
 
