@@ -250,8 +250,10 @@ class PostPre(LearningRule):
 class NonLinear_Simplified(LearningRule):
     # language=rst
     """
-    Simple Non-linear STDP rule involving both pre- and post-synaptic spiking activity. By default,
-    pre-synaptic update is negative and the post-synaptic update is positive.
+    Simplified Non-linear STDP rule with the memristive characteristic
+    involving both pre- and post-synaptic spiking activity.
+    By default, pre-synaptic update is negative and the post-synaptic update is positive.
+    This rule doesn't allow input neurons' spiking proportion to affect synaptic weights reguation.
     """
 
     def __init__(
@@ -1170,8 +1172,10 @@ class NonLinear_Simplified(LearningRule):
 class NonLinear(LearningRule):
     # language=rst
     """
-    Simple Non-linear STDP rule involving both pre- and post-synaptic spiking activity. By default,
-    pre-synaptic update is negative and the post-synaptic update is positive.
+    Non-linear STDP rule with the memristive characteristic
+    involving both pre- and post-synaptic spiking activity.
+    By default, pre-synaptic update is negative and the post-synaptic update is positive.
+    Input neurons' spiking proportion affects synaptic weight regulation.
     """
 
     def __init__(
