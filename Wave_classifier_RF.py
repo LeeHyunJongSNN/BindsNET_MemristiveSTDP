@@ -54,6 +54,8 @@ parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
+parser.add_argument("--dead_synapse_input_num", type=int, default=10)
+parser.add_argument("--dead_synapse_exc_num", type=int, default=10)
 parser.set_defaults(plot=True, gpu=True)
 
 args = parser.parse_args()
@@ -78,6 +80,8 @@ train = args.train
 plot = args.plot
 gpu = args.gpu
 spare_gpu = args.spare_gpu
+dead_synapse_input_num = args.dead_synapse_input_num
+dead_synapse_exc_num = args.dead_synapse_exc_num
 
 # Sets up Gpu use
 gc.collect()
@@ -244,8 +248,8 @@ voltage_axes, voltage_ims = None, None
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-rand_i = random.sample(range(0, num_inputs), 10)
-rand_j = random.sample(range(0, n_neurons), 10)
+dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
+dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
 
 # Train the network.
 print("\nBegin training.\n")
@@ -331,7 +335,9 @@ for epoch in range(n_epochs):
         s_record = []
         t_record = []
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
-                    simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, rand_i=rand_i, rand_j=rand_j)
+                    simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin,
+                    dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
+                    dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
