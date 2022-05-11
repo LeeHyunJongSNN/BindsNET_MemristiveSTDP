@@ -333,10 +333,10 @@ class NonLinear(LearningRule):
         Ae_index_CUR = 0
 
         # dead synapses variables
-        rand_i = []
-        rand_j = []
-        synapse_input = 10
-        synapse_exc = 10
+        dead_index_input = []
+        dead_index_exc = []
+        dead_synapse_input_num = kwargs.get('dead_synapse_input_num')
+        dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
         # Factors for nonlinear update.
         vltp = 0.0
@@ -356,13 +356,13 @@ class NonLinear(LearningRule):
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
-        if dead_synapses == False:
-            rand_i = kwargs.get('rand_i')
-            rand_j = kwargs.get('rand_j')
+        if dead_synapses == True:
+            dead_index_input = kwargs.get('dead_index_input')
+            dead_index_exc = kwargs.get('dead_index_exc')
 
-            for i in range(synapse_input):
-                for j in range(synapse_exc):
-                    self.connection.w[rand_i[i], rand_j[j]] = 0
+            for i in range(dead_synapse_input_num):
+                for j in range(dead_synapse_exc_num):
+                    self.connection.w[dead_index_input[i], dead_index_exc[j]] = 0
 
         if vltp == 0 and vltd == 0:  # fully linear update
             if torch.numel(update_index_and_time) == 0:
@@ -753,7 +753,7 @@ class NonLinear(LearningRule):
 
         # boolean varibles for addtional feature
         grand = True  # random distribution Gmax and Gmin
-        dead_synapses = False  # dead synapses simulation
+        dead_synapses = True  # dead synapses simulation
 
         if grand == True:
             gmax = kwargs.get('rand_gmax')
