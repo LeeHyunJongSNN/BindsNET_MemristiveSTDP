@@ -41,14 +41,14 @@ parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.001)
+parser.add_argument("--theta_plus", type=float, default=0.0001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=10)
+parser.add_argument("--intensity", type=float, default=9)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
-parser.add_argument("--test_ratio", type=float, default=0.95)
+parser.add_argument("--test_ratio", type=float, default=59/60)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -145,7 +145,7 @@ wave_data = []
 classes = []
 
 fname = " "
-for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles/WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
+for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles/WIFI_10MHz_IQvector_(minus)3dB_60000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
