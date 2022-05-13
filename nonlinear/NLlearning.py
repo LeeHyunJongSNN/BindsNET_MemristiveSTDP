@@ -341,9 +341,9 @@ class NonLinear_Simplified(LearningRule):
         dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
         # Factors for nonlinear update
-        vltp = 0.0
-        vltd = 0.0
-        b = 1.0
+        vltp = kwargs.get('vLTP')
+        vltd = kwargs.get('vLTD')
+        b = kwargs.get('beta')
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
@@ -751,9 +751,9 @@ class NonLinear_Simplified(LearningRule):
         dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
         # Factors for nonlinear update
-        vltp = 0.0
-        vltd = 0.0
-        b = 1.0
+        vltp = kwargs.get('vLTP')
+        vltd = kwargs.get('vLTD')
+        b = kwargs.get('beta')
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
@@ -1808,9 +1808,9 @@ class NonLinear(LearningRule):
         dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
         # Factors for nonlinear update
-        vltp = 0.0
-        vltd = 0.0
-        b = 1.0
+        vltp = kwargs.get('vLTP')
+        vltd = kwargs.get('vLTD')
+        b = kwargs.get('beta')
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
