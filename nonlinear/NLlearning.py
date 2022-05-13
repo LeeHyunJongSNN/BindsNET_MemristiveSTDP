@@ -365,8 +365,8 @@ class NonLinear_Simplified(LearningRule):
             dead_index_exc = kwargs.get('dead_index_exc')
 
             for i in range(dead_synapse_input_num):
-                for j in range(dead_synapse_exc_num):
-                    self.connection.w[dead_index_input[i], dead_index_exc[j]] = 0
+                for l in range(dead_synapse_exc_num):
+                    self.connection.w[dead_index_input[i], dead_index_exc[l]] = 0
 
         # Weight update with memristive characteristc
         if vltp == 0 and vltd == 0:  # Fully linear update
@@ -427,10 +427,10 @@ class NonLinear_Simplified(LearningRule):
                                                                                gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
-                            if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_stdp_time_LTD = j  # Latest update time of LTD
-                                Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
+                        for l in range(time - pulse_time_LTD, time + 1):
+                            if torch.numel(torch.nonzero(target_r[l])) != 0:
+                                Ae_stdp_time_LTD = l  # Latest update time of LTD
+                                Ae_stdp_index_LTD = torch.nonzero(target_r[l]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
@@ -504,10 +504,10 @@ class NonLinear_Simplified(LearningRule):
                                                                                gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
-                            if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_stdp_time_LTD = j  # Latest update time of LTD
-                                Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
+                        for l in range(time - pulse_time_LTD, time + 1):
+                            if torch.numel(torch.nonzero(target_r[l])) != 0:
+                                Ae_stdp_time_LTD = l  # Latest update time of LTD
+                                Ae_stdp_index_LTD = torch.nonzero(target_r[l]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
@@ -586,10 +586,10 @@ class NonLinear_Simplified(LearningRule):
                                                                                       1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
-                            if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_stdp_time_LTD = j  # Latest update time of LTD
-                                Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
+                        for l in range(time - pulse_time_LTD, time + 1):
+                            if torch.numel(torch.nonzero(target_r[l])) != 0:
+                                Ae_stdp_time_LTD = l  # Latest update time of LTD
+                                Ae_stdp_index_LTD = torch.nonzero(target_r[l]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
@@ -674,10 +674,10 @@ class NonLinear_Simplified(LearningRule):
                                                                                       1 - np.exp(vltd / 256))
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
-                            if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_stdp_time_LTD = j  # Latest update time of LTD
-                                Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
+                        for l in range(time - pulse_time_LTD, time + 1):
+                            if torch.numel(torch.nonzero(target_r[l])) != 0:
+                                Ae_stdp_time_LTD = l  # Latest update time of LTD
+                                Ae_stdp_index_LTD = torch.nonzero(target_r[l]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                     X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
@@ -775,8 +775,8 @@ class NonLinear_Simplified(LearningRule):
             dead_index_exc = kwargs.get('dead_index_exc')
 
             for i in range(dead_synapse_input_num):
-                for j in range(dead_synapse_exc_num):
-                    self.connection.w[dead_index_input[i], dead_index_exc[j]] = 0
+                for l in range(dead_synapse_exc_num):
+                    self.connection.w[dead_index_input[i], dead_index_exc[l]] = 0
 
                 # Weight update with memristive characteristc
             if vltp == 0 and vltd == 0:  # Fully linear update
@@ -840,10 +840,10 @@ class NonLinear_Simplified(LearningRule):
                                                                                    gmin[i, Ae_index_CUR]) / 256
 
                         if time == simulation_time - 1:
-                            for j in range(time - pulse_time_LTD, time + 1):
-                                if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                    Ae_stdp_time_LTD = j  # Latest update time of LTD
-                                    Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
+                            for l in range(time - pulse_time_LTD, time + 1):
+                                if torch.numel(torch.nonzero(target_r[l])) != 0:
+                                    Ae_stdp_time_LTD = l  # Latest update time of LTD
+                                    Ae_stdp_index_LTD = torch.nonzero(target_r[l]).view(
                                         -1)  # Latest update nueron index of LTD
                                     if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                         X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
@@ -926,10 +926,10 @@ class NonLinear_Simplified(LearningRule):
                                                                                    gmin[i, Ae_index_CUR]) / 256
 
                         if time == simulation_time - 1:
-                            for j in range(time - pulse_time_LTD, time + 1):
-                                if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                    Ae_stdp_time_LTD = j  # Latest update time of LTD
-                                    Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
+                            for l in range(time - pulse_time_LTD, time + 1):
+                                if torch.numel(torch.nonzero(target_r[l])) != 0:
+                                    Ae_stdp_time_LTD = l  # Latest update time of LTD
+                                    Ae_stdp_index_LTD = torch.nonzero(target_r[l]).view(
                                         -1)  # Latest update nueron index of LTD
                                     if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                         X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
@@ -1012,10 +1012,10 @@ class NonLinear_Simplified(LearningRule):
                                                                                           1 - np.exp(vltd / 256))
 
                         if time == simulation_time - 1:
-                            for j in range(time - pulse_time_LTD, time + 1):
-                                if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                    Ae_stdp_time_LTD = j  # Latest update time of LTD
-                                    Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
+                            for l in range(time - pulse_time_LTD, time + 1):
+                                if torch.numel(torch.nonzero(target_r[l])) != 0:
+                                    Ae_stdp_time_LTD = l  # Latest update time of LTD
+                                    Ae_stdp_index_LTD = torch.nonzero(target_r[l]).view(
                                         -1)  # Latest update nueron index of LTD
                                     if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                         X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
@@ -1111,10 +1111,10 @@ class NonLinear_Simplified(LearningRule):
                                                                                           1 - np.exp(vltd / 256))
 
                         if time == simulation_time - 1:
-                            for j in range(time - pulse_time_LTD, time + 1):
-                                if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                    Ae_stdp_time_LTD = j  # Latest update time of LTD
-                                    Ae_stdp_index_LTD = torch.nonzero(target_r[j]).view(
+                            for l in range(time - pulse_time_LTD, time + 1):
+                                if torch.numel(torch.nonzero(target_r[l])) != 0:
+                                    Ae_stdp_time_LTD = l  # Latest update time of LTD
+                                    Ae_stdp_index_LTD = torch.nonzero(target_r[l]).view(
                                         -1)  # Latest update nueron index of LTD
                                     if torch.sum(source_r[Ae_stdp_time_LTD:time]) > 0:  # LTD
                                         X_cause_index = torch.nonzero(source_r[Ae_stdp_time_LTD:time])[:, [1]].view(
@@ -1265,9 +1265,9 @@ class NonLinear(LearningRule):
         dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
         # Factors for nonlinear update
-        vltp = 0.0
-        vltd = 0.0
-        b = 1.0
+        vltp = kwargs.get('vLTP')
+        vltd = kwargs.get('vLTD')
+        b = kwargs.get('beta')
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
@@ -1367,9 +1367,9 @@ class NonLinear(LearningRule):
                                                                                    gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # Latest update time of LTD
+                                Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
@@ -1481,9 +1481,9 @@ class NonLinear(LearningRule):
                                                                                    gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # Latest update time of LTD
+                                Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
@@ -1590,9 +1590,9 @@ class NonLinear(LearningRule):
                                                                                       vltd / 256))
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # Latest update time of LTD
+                                Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
@@ -1721,9 +1721,9 @@ class NonLinear(LearningRule):
                                                                                       vltd / 256))
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # Latest update time of LTD
+                                Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
@@ -1746,7 +1746,7 @@ class NonLinear(LearningRule):
                                         elif i in X_cause_index and len(Ae_index_LTD) == 1:
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False) + 1
                                             Ae_index_CUR = Ae_index_LTD[0].item()
-                                            for j in ragne(X_cause_count):
+                                            for j in range(X_cause_count):
                                                 self.connection.w[i, Ae_index_CUR] -= (self.connection.w[
                                                                                            i, Ae_index_CUR] +
                                                                                        g1ltd[i, Ae_index_CUR] -
@@ -1910,9 +1910,9 @@ class NonLinear(LearningRule):
                                                                                    gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # Latest update time of LTD
+                                Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
@@ -2024,9 +2024,9 @@ class NonLinear(LearningRule):
                                                                                    gmin[i, Ae_index_CUR]) / 256
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # Latest update time of LTD
+                                Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
@@ -2133,9 +2133,9 @@ class NonLinear(LearningRule):
                                                                                       vltd / 256))
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # Latest update time of LTD
+                                Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
@@ -2264,9 +2264,9 @@ class NonLinear(LearningRule):
                                                                                       vltd / 256))
 
                     if time == simulation_time - 1:
-                        for j in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
-                                Ae_time_LTD = j  # Latest update time of LTD
+                                Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
                                     -1)  # Latest update nueron index of LTD
                                 if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
@@ -2289,7 +2289,7 @@ class NonLinear(LearningRule):
                                         elif i in X_cause_index and len(Ae_index_LTD) == 1:
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False) + 1
                                             Ae_index_CUR = Ae_index_LTD[0].item()
-                                            for j in ragne(X_cause_count):
+                                            for j in range(X_cause_count):
                                                 self.connection.w[i, Ae_index_CUR] -= (self.connection.w[
                                                                                            i, Ae_index_CUR] +
                                                                                        g1ltd[i, Ae_index_CUR] -
