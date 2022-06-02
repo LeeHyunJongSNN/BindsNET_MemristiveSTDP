@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
+from scipy.signal import detrend
 
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder, RankOrderTTFSEncoder
 from bindsnet.nonlinear.NLmodels import TTFSNetwork_NonLinear, DiehlAndCook2015_NonLinear
@@ -44,7 +45,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.0001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=9)
+parser.add_argument("--intensity", type=float, default=1000)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -111,7 +112,7 @@ torch.set_num_threads(os.cpu_count() - 1)
 print("Running on Device =", device)
 print("Random Seed =", random_seed)
 print("vLTP =", vLTP)
-print("vLTP =", vLTD)
+print("vLTD =", vLTD)
 print("beta =", beta)
 
 # Determines number of workers to use
@@ -154,7 +155,8 @@ wave_data = []
 classes = []
 
 fname = " "
-for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles/WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
+for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles"
+              "/WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
@@ -169,12 +171,17 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles/WIFI_10MHz_IQ
         if len(linedata) == 0:
             continue
 
-        linedata_fft_1 = np.fft.fft([x for x in linedata[16:80]])
-        linedata_fft_2 = np.fft.fft([x for x in linedata[96:160]])
-        linedata_fft_3 = np.fft.fft([x for x in linedata[192:256]])
-        linedata_fft_4 = np.fft.fft([x for x in linedata[256:len(linedata) - 1]])
-        linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + linedata_fft_3.tolist() + \
-                       linedata_fft_4.tolist()
+        linedata_dcremoved = [x for x in linedata[0:len(linedata) - 1]]
+        linedata_dcremoved -= np.mean(linedata_dcremoved)
+        linedata_dcremoved = detrend(linedata_dcremoved)
+
+        linedata_fft_1 = np.fft.fft([x for x in linedata_dcremoved[16:80]]) / 64
+        linedata_fft_2 = np.fft.fft([x for x in linedata_dcremoved[96:160]]) / 64
+        linedata_fft_3 = np.fft.fft([x for x in linedata_dcremoved[192:256]]) / 64
+        linedata_fft_4 = np.fft.fft([x for x in linedata_dcremoved[256:len(linedata)]]) / 64
+        linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + \
+                       linedata_fft_3.tolist() + linedata_fft_4.tolist()
+
         linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
 
         # linedata_intensity = [intensity * abs(x) for x in linedata[0:len(linedata) - 1]]
@@ -361,7 +368,7 @@ for epoch in range(n_epochs):
 
         # Optionally plot various simulation information.
         if plot:
-            image = batch["encoded_image"].view(256, 500)
+            image = batch["encoded_image"].view(num_inputs, 500)
             inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
             input_exc_weights = network.connections[("X", "Ae")].w * 100    # Scaling for plotting
             square_weights = get_square_weights(

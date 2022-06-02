@@ -1,5 +1,6 @@
 import os
 import gc
+
 import torch
 import argparse
 import random
@@ -9,6 +10,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
+from scipy.signal import detrend
 
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder, RankOrderTTFSEncoder
 from bindsnet.nonlinear.NLmodels import TTFSNetwork_NonLinear, DiehlAndCook2015_NonLinear
@@ -34,26 +36,26 @@ random_seed = random.randint(0, 100)
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=random_seed)
-parser.add_argument("--n_neurons", type=int, default=100)
+parser.add_argument("--n_neurons", type=int, default=4)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.005)
+parser.add_argument("--theta_plus", type=float, default=0.0005)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
 parser.add_argument("--intensity", type=float, default=200)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
-parser.add_argument("--test_ratio", type=float, default=0.975)
+parser.add_argument("--test_ratio", type=float, default=0.95)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
-parser.add_argument("--dead_synapse_input_num", type=int, default=10)
-parser.add_argument("--dead_synapse_exc_num", type=int, default=10)
+parser.add_argument("--dead_synapse_input_num", type=int, default=2)
+parser.add_argument("--dead_synapse_exc_num", type=int, default=2)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -111,7 +113,7 @@ torch.set_num_threads(os.cpu_count() - 1)
 print("Running on Device =", device)
 print("Random Seed =", random_seed)
 print("vLTP =", vLTP)
-print("vLTP =", vLTD)
+print("vLTD =", vLTD)
 print("beta =", beta)
 
 # Determines number of workers to use
@@ -155,7 +157,7 @@ classes = []
 
 fname = " "
 for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
-              "(sine+sawtooth)_1kHz_10_amplitude_18dB_20000.txt"]:
+              "(sine+sawtooth)_1kHz_40_amplitude_0dB_20000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
@@ -170,11 +172,16 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
         if len(linedata) == 0:
             continue
 
-        # linedata_fft = np.fft.fft([x for x in linedata[0:len(linedata) - 1]]).tolist()
-        # linedata_intensity = [intensity * abs(x.real) + intensity * abs(x.imag)
-        #                       for x in linedata_fft[0:len(linedata_fft)]]
+        linedata_dcremoved = [x for x in linedata[0:len(linedata) - 1]]  # removing DC offset
+        linedata_dcremoved -= np.mean(linedata_dcremoved)
+        linedata_dcremoved = detrend(linedata_dcremoved)
 
-        linedata_intensity = [intensity * abs(x) for x in linedata[0:len(linedata) - 1]]
+        linedata_fft1 = np.fft.fft([x for x in linedata_dcremoved[0:20]]) / 20
+        linedata_fft2 = np.fft.fft([x for x in linedata_dcremoved[20:40]]) / 20
+
+        linedata_fft = linedata_fft1.tolist() + linedata_fft2.tolist()
+        linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
+
 
         cl = int(linedata[-1])
         classes.append(cl)
@@ -358,11 +365,11 @@ for epoch in range(n_epochs):
 
         # Optionally plot various simulation information.
         if plot:
-            image = batch["encoded_image"].view(10, 500)
-            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, 10)
+            image = batch["encoded_image"].view(num_inputs, 500)
+            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, num_inputs)
             input_exc_weights = network.connections[("X", "Ae")].w
             square_weights = get_square_weights(
-               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, (1, 10)
+               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, (1, num_inputs)
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
