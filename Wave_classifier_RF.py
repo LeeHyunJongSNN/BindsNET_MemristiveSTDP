@@ -44,10 +44,10 @@ parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.001)
+parser.add_argument("--theta_plus", type=float, default=0.0005)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=500)
+parser.add_argument("--intensity", type=float, default=600)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -173,9 +173,9 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
         if len(linedata) == 0:
             continue
 
-        linedata_dcremoved = [x for x in linedata[0:len(linedata) - 1]]  # removing DC offset
+        linedata_dcremoved = [x for x in linedata[0:len(linedata) - 1]]
         linedata_dcremoved -= np.mean(linedata_dcremoved)
-        linedata_dcremoved = detrend(linedata_dcremoved)
+        linedata_dcremoved = detrend(linedata_dcremoved)    # removing DC offset
 
         linedata_fft1 = np.fft.fft([x for x in linedata_dcremoved[0:10]]) / 10
         linedata_fft2 = np.fft.fft([x for x in linedata_dcremoved[10:20]]) / 10
