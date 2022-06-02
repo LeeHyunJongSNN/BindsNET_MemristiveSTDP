@@ -158,7 +158,7 @@ classes = []
 
 fname = " "
 for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
-              "(square+sawtooth)_1kHz_10_amplitude_0dB_20000.txt"]:
+              "(square+sawtooth)_1kHz_10_amplitude_18dB_20000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
@@ -174,18 +174,11 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
             continue
 
         linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
-        # linedata_normlaized = minmax_scale(linedata_labelremoved).tolist()
         linedata_dcremoved = linedata_labelremoved - np.mean(linedata_labelremoved)
         linedata_dcremoved = detrend(linedata_dcremoved)    # removing DC offset
-
-        linedata_fft1 = np.fft.fft([x for x in linedata_dcremoved[0:25]]) / 25
-        linedata_fft2 = np.fft.fft([x for x in linedata_dcremoved[25:50]]) / 25
-        linedata_fft3 = np.fft.fft([x for x in linedata_dcremoved[50:75]]) / 25
-        linedata_fft4 = np.fft.fft([x for x in linedata_dcremoved[75:len(linedata_dcremoved)]]) / 25
-        linedata_fft = linedata_fft1.tolist() + linedata_fft2.tolist() + \
-                       linedata_fft3.tolist() + linedata_fft4.tolist()
-
-        linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
+        linedata_fft = (np.fft.fft(linedata_dcremoved) / len(linedata_labelremoved))
+        linedata_normlaized = minmax_scale(np.abs(linedata_fft)).tolist()
+        linedata_intensity = [intensity * round(abs(x), 10) for x in linedata_normlaized[0:len(linedata_normlaized)]]
 
         # linedata_intensity = [intensity * abs(x) for x in linedata[0:len(linedata) - 1]]
 
