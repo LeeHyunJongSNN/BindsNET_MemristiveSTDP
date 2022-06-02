@@ -184,6 +184,8 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles"
 
         linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
 
+        # linedata_intensity = [intensity * abs(x) for x in linedata[0:len(linedata) - 1]]
+
         cl = complex(linedata[-1])
         classes.append(cl)
         lbl = torch.tensor([cl])

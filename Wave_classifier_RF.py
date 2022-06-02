@@ -37,26 +37,26 @@ random_seed = random.randint(0, 100)
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=random_seed)
-parser.add_argument("--n_neurons", type=int, default=100)
+parser.add_argument("--n_neurons", type=int, default=3)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.005)
+parser.add_argument("--theta_plus", type=float, default=0.003)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=00)
+parser.add_argument("--intensity", type=float, default=200)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
-parser.add_argument("--test_ratio", type=float, default=0.5)
+parser.add_argument("--test_ratio", type=float, default=0.95)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
-parser.add_argument("--dead_synapse_input_num", type=int, default=2)
-parser.add_argument("--dead_synapse_exc_num", type=int, default=2)
+parser.add_argument("--dead_synapse_input_num", type=int, default=3)
+parser.add_argument("--dead_synapse_exc_num", type=int, default=3)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -158,7 +158,7 @@ classes = []
 
 fname = " "
 for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
-              "(sine+sawtooth)_1kHz_100_amplitude_0dB_20000.txt"]:
+              "(square+sawtooth)_1kHz_10_amplitude_0dB_20000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
@@ -174,6 +174,7 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
             continue
 
         linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
+        # linedata_normlaized = minmax_scale(linedata_labelremoved).tolist()
         linedata_dcremoved = linedata_labelremoved - np.mean(linedata_labelremoved)
         linedata_dcremoved = detrend(linedata_dcremoved)    # removing DC offset
 
@@ -185,6 +186,8 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
                        linedata_fft3.tolist() + linedata_fft4.tolist()
 
         linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
+
+        # linedata_intensity = [intensity * abs(x) for x in linedata[0:len(linedata) - 1]]
 
         cl = int(linedata[-1])
         classes.append(cl)
