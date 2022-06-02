@@ -171,8 +171,8 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles"
         if len(linedata) == 0:
             continue
 
-        linedata_dcremoved = [x for x in linedata[0:len(linedata) - 1]]
-        linedata_dcremoved -= np.mean(linedata_dcremoved)
+        linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
+        linedata_dcremoved = linedata_labelremoved - np.mean(linedata_labelremoved)
         linedata_dcremoved = detrend(linedata_dcremoved)    # removing DC offset
 
         linedata_fft_1 = np.fft.fft([x for x in linedata_dcremoved[16:80]]) / 64
@@ -183,8 +183,6 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles"
                        linedata_fft_3.tolist() + linedata_fft_4.tolist()
 
         linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
-
-        # linedata_intensity = [intensity * abs(x) for x in linedata[0:len(linedata) - 1]]
 
         cl = complex(linedata[-1])
         classes.append(cl)
