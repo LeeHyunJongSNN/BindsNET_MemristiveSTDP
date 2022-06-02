@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import minmax_scale
 from scipy.signal import detrend
 
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder, RankOrderTTFSEncoder
@@ -43,10 +44,10 @@ parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.0005)
+parser.add_argument("--theta_plus", type=float, default=0.001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1)
-parser.add_argument("--intensity", type=float, default=200)
+parser.add_argument("--intensity", type=float, default=500)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -176,12 +177,15 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
         linedata_dcremoved -= np.mean(linedata_dcremoved)
         linedata_dcremoved = detrend(linedata_dcremoved)
 
-        linedata_fft1 = np.fft.fft([x for x in linedata_dcremoved[0:20]]) / 20
-        linedata_fft2 = np.fft.fft([x for x in linedata_dcremoved[20:40]]) / 20
+        linedata_fft1 = np.fft.fft([x for x in linedata_dcremoved[0:10]]) / 10
+        linedata_fft2 = np.fft.fft([x for x in linedata_dcremoved[10:20]]) / 10
+        linedata_fft3 = np.fft.fft([x for x in linedata_dcremoved[20:30]]) / 10
+        linedata_fft4 = np.fft.fft([x for x in linedata_dcremoved[30:40]]) / 10
 
-        linedata_fft = linedata_fft1.tolist() + linedata_fft2.tolist()
-        linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
-
+        linedata_fft = linedata_fft1.tolist() + linedata_fft2.tolist() + linedata_fft3.tolist() + linedata_fft4.tolist()
+        linedata_abs = [abs(x) for x in linedata_fft[0:len(linedata_fft)]]
+        linedata_normalized = np.round(minmax_scale(linedata_abs), 5).tolist()
+        linedata_intensity = [intensity * x for x in linedata_normalized[0:len(linedata_abs)]]
 
         cl = int(linedata[-1])
         classes.append(cl)
