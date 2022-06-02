@@ -176,7 +176,7 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
         linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
         linedata_dcremoved = linedata_labelremoved - np.mean(linedata_labelremoved)
         linedata_dcremoved = detrend(linedata_dcremoved)    # removing DC offset
-        linedata_fft = (np.fft.fft(linedata_dcremoved) / len(linedata_labelremoved))
+        linedata_fft = (np.fft.fft(linedata_dcremoved) / len(linedata_dcremoved))
         linedata_normlaized = minmax_scale(np.abs(linedata_fft)).tolist()
         linedata_intensity = [intensity * round(abs(x), 10) for x in linedata_normlaized[0:len(linedata_normlaized)]]
 
