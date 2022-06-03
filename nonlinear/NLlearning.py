@@ -348,8 +348,8 @@ class NonLinear_Simplified(LearningRule):
         gmin = torch.zeros_like(self.connection.w)
 
         # Boolean varibles for addtional feature
-        grand = True  # Random distribution Gmax and Gmin
-        dead_synapses = False # Dead synapses simulation
+        grand = kwargs.get("random_G")  # Random distribution Gmax and Gmin
+        dead_synapses = kwargs.get('dead_synapse') # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
         if grand == True:
@@ -758,8 +758,8 @@ class NonLinear_Simplified(LearningRule):
         gmin = torch.zeros_like(self.connection.w)
 
         # Boolean varibles for addtional feature
-        grand = True  # Random distribution Gmax and Gmin
-        dead_synapses = False  # Dead synapses simulation
+        grand = kwargs.get("random_G")  # Random distribution Gmax and Gmin
+        dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
         if grand == True:
@@ -1272,8 +1272,8 @@ class NonLinear(LearningRule):
         gmin = torch.zeros_like(self.connection.w)
 
         # Boolean varibles for addtional feature
-        grand = True  # Random distribution Gmax and Gmin
-        dead_synapses = False # Dead synapses simulation
+        grand = grand = kwargs.get("random_G")  # Random distribution Gmax and Gmin
+        dead_synapses = kwargs.get('dead_synapse') # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
         if grand == True:
@@ -1815,8 +1815,8 @@ class NonLinear(LearningRule):
         gmin = torch.zeros_like(self.connection.w)
 
         # Boolean varibles for addtional feature
-        grand = True  # Random distribution Gmax and Gmin
-        dead_synapses = False  # Dead synapses simulation
+        grand = grand = kwargs.get("random_G")  # Random distribution Gmax and Gmin
+        dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
         if grand == True:
