@@ -182,11 +182,11 @@ for fname in ["/home/leehyunjong/PycharmProjects/Machine_Learning/Simple_Waves_R
         linedata_dcremoved = linedata_labelremoved - np.mean(linedata_labelremoved)
         linedata_dcremoved = detrend(linedata_dcremoved)  # removing DC offset
         linedata_fft = (np.fft.fft(linedata_dcremoved) / len(linedata_dcremoved))
-        linedata_normlaized = minmax_scale(np.abs(linedata_fft)).tolist()
-        linedata_intensity = [intensity * round(float(x), 10) for x in linedata_normlaized[0:len(linedata_normlaized)]]
+        linedata_normalized = minmax_scale(np.abs(linedata_fft)).tolist()
+        linedata_intensity = [intensity * round(float(x), 10) for x in linedata_normalized[0:len(linedata_normalized)]]
 
-        # linedata_normlaized = minmax_scale(linedata_labelremoved).tolist()
-        # linedata_intensity = [intensity * x for x in linedata[0:len(linedata_labelremoved)]]
+        # linedata_normalized = minmax_scale(linedata_labelremoved).tolist()
+        # linedata_intensity = [intensity * x for x in linedata[0:len(linedata_normalized)]]
         
         cl = int(linedata[-1])
         classes.append(cl)
