@@ -186,7 +186,7 @@ for fname in ["/home/leehyunjong/PycharmProjects/Machine_Learning/Simple_Waves_R
         linedata_intensity = [intensity * round(float(x), 10) for x in linedata_normlaized[0:len(linedata_normlaized)]]
 
         # linedata_normlaized = minmax_scale(linedata_labelremoved).tolist()
-        # linedata_intensity = [intensity * x for x in linedata[0:len(linedata) - 1]]
+        # linedata_intensity = [intensity * x for x in linedata[0:len(linedata_labelremoved)]]
         
         cl = int(linedata[-1])
         classes.append(cl)
