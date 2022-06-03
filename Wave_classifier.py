@@ -178,7 +178,7 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles"
         linedata_fft_1 = np.fft.fft([x for x in linedata_dcremoved[16:80]]) / 64
         linedata_fft_2 = np.fft.fft([x for x in linedata_dcremoved[96:160]]) / 64
         linedata_fft_3 = np.fft.fft([x for x in linedata_dcremoved[192:256]]) / 64
-        linedata_fft_4 = np.fft.fft([x for x in linedata_dcremoved[256:len(linedata)]]) / 64
+        linedata_fft_4 = np.fft.fft([x for x in linedata_dcremoved[256:len(linedata_dcremoved)]]) / 64
         linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + \
                        linedata_fft_3.tolist() + linedata_fft_4.tolist()
 
