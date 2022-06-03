@@ -11,7 +11,8 @@ from time import time as t
 from sklearn.model_selection import train_test_split
 from scipy.signal import detrend
 
-from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder, RankOrderTTFSEncoder
+from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder, \
+    RankOrderTTFSEncoder
 from bindsnet.nonlinear.NLmodels import TTFSNetwork_NonLinear, DiehlAndCook2015_NonLinear
 from bindsnet.nonlinear.NLlearning import NonLinear, NonLinear_Simplified
 from bindsnet.network.monitors import Monitor
@@ -49,11 +50,12 @@ parser.add_argument("--intensity", type=float, default=600)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
-parser.add_argument("--test_ratio", type=float, default=0.95)
+parser.add_argument("--test_ratio", type=float, default=59/60)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
-parser.add_argument("--dead_synapse_input_num", type=int, default=16)
+parser.add_argument("--dead_synapse", type=bool, default=False)
+parser.add_argument("--dead_synapse_input_num", type=int, default=4)
 parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
@@ -83,6 +85,7 @@ test_ratio = args.test_ratio
 vLTP = args.vLTP
 vLTD = args.vLTD
 beta = args.beta
+dead_synapse = args.dead_synapse
 dead_synapse_input_num = args.dead_synapse_input_num
 dead_synapse_exc_num = args.dead_synapse_exc_num
 train = args.train
@@ -112,8 +115,9 @@ torch.set_num_threads(os.cpu_count() - 1)
 print("Running on Device =", device)
 print("Random Seed =", random_seed)
 print("vLTP =", vLTP)
-print("vLTD =", vLTD)
+print("vLTP =", vLTD)
 print("beta =", beta)
+print("dead synapse =", dead_synapse)
 
 # Determines number of workers to use
 if n_workers == -1:
@@ -155,8 +159,8 @@ wave_data = []
 classes = []
 
 fname = " "
-for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles"
-              "/WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
+for fname in ["/home/leehyunjong/PycharmProjects/Machine_Learning/Wi-Fi_Preambles/"
+              "WIFI_10MHz_IQvector_(minus)3dB_60000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
@@ -173,7 +177,7 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Wi-Fi_Preambles"
 
         linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
         linedata_dcremoved = linedata_labelremoved - np.mean(linedata_labelremoved)
-        linedata_dcremoved = detrend(linedata_dcremoved)    # removing DC offset
+        linedata_dcremoved = detrend(linedata_dcremoved)  # removing DC offset
 
         linedata_fft_1 = np.fft.fft([x for x in linedata_dcremoved[16:80]]) / 64
         linedata_fft_2 = np.fft.fft([x for x in linedata_dcremoved[96:160]]) / 64
@@ -356,7 +360,7 @@ for epoch in range(n_epochs):
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
+                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
                     dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
 
         # Get voltage recording.
@@ -368,7 +372,7 @@ for epoch in range(n_epochs):
 
         # Optionally plot various simulation information.
         if plot:
-            image = batch["encoded_image"].view(num_inputs, 500)
+            image = batch["encoded_image"].view(256, 500)
             inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
             input_exc_weights = network.connections[("X", "Ae")].w * 100    # Scaling for plotting
             square_weights = get_square_weights(

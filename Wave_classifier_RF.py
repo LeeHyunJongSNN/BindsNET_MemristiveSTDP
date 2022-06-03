@@ -1,6 +1,5 @@
 import os
 import gc
-
 import torch
 import argparse
 import random
@@ -37,7 +36,7 @@ random_seed = random.randint(0, 100)
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=random_seed)
-parser.add_argument("--n_neurons", type=int, default=3)
+parser.add_argument("--n_neurons", type=int, default=4)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=1)
@@ -52,11 +51,13 @@ parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
 parser.add_argument("--test_ratio", type=float, default=0.95)
+parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
-parser.add_argument("--dead_synapse_input_num", type=int, default=3)
-parser.add_argument("--dead_synapse_exc_num", type=int, default=3)
+parser.add_argument("--dead_synapse", type=bool, default=False)
+parser.add_argument("--dead_synapse_input_num", type=int, default=4)
+parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -82,9 +83,11 @@ enocder_type = args.encoder_type
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 test_ratio = args.test_ratio
+random_G = args.random_G
 vLTP = args.vLTP
 vLTD = args.vLTD
 beta = args.beta
+dead_synapse = args.dead_synapse
 dead_synapse_input_num = args.dead_synapse_input_num
 dead_synapse_exc_num = args.dead_synapse_exc_num
 train = args.train
@@ -113,9 +116,11 @@ else:
 torch.set_num_threads(os.cpu_count() - 1)
 print("Running on Device =", device)
 print("Random Seed =", random_seed)
+print("Random G value =", random_G)
 print("vLTP =", vLTP)
-print("vLTD =", vLTD)
+print("vLTP =", vLTD)
 print("beta =", beta)
+print("dead synapse =", dead_synapse)
 
 # Determines number of workers to use
 if n_workers == -1:
@@ -157,8 +162,8 @@ wave_data = []
 classes = []
 
 fname = " "
-for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
-              "(square+sawtooth)_1kHz_10_amplitude_18dB_20000.txt"]:
+for fname in ["/home/leehyunjong/PycharmProjects/Machine_Learning/Simple_Waves_RF/"
+              "(sine+square)_1kHz_10_amplitude_18dB_20000.txt"]:
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
     n_attack = 0
@@ -175,7 +180,7 @@ for fname in ["C:/Pycharm BindsNET/Wave_classifier/Simple_Waves_RF/"
 
         linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
         linedata_dcremoved = linedata_labelremoved - np.mean(linedata_labelremoved)
-        linedata_dcremoved = detrend(linedata_dcremoved)    # removing DC offset
+        linedata_dcremoved = detrend(linedata_dcremoved)  # removing DC offset
         linedata_fft = (np.fft.fft(linedata_dcremoved) / len(linedata_dcremoved))
         linedata_normlaized = minmax_scale(np.abs(linedata_fft)).tolist()
         linedata_intensity = [intensity * round(abs(x), 10) for x in linedata_normlaized[0:len(linedata_normlaized)]]
@@ -350,9 +355,9 @@ for epoch in range(n_epochs):
         s_record = []
         t_record = []
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
-                    simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin,
+                    simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
+                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
                     dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
 
         # Get voltage recording.
@@ -364,11 +369,11 @@ for epoch in range(n_epochs):
 
         # Optionally plot various simulation information.
         if plot:
-            image = batch["encoded_image"].view(num_inputs, 500)
-            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, num_inputs)
+            image = batch["encoded_image"].view(10, 500)
+            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, 10)
             input_exc_weights = network.connections[("X", "Ae")].w
             square_weights = get_square_weights(
-               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, (1, num_inputs)
+               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, (1, 10)
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
