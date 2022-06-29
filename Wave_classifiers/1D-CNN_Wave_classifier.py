@@ -59,6 +59,7 @@ for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles"
 
 train_data, test_valid_data, train_label, test_valid_label = train_test_split(
     wave_data, wave_label, test_size=test_valid_ratio)
+
 valid_data, test_data, valid_label, test_label = train_test_split(
     test_valid_data, test_valid_label, test_size=test_ratio)
 

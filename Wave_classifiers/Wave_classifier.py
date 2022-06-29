@@ -165,8 +165,6 @@ for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
-    n_attack = 0
-    n_benign = 0
     linedata = []
 
     for line in f:
@@ -201,9 +199,8 @@ for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
         wave_data.append({"encoded_image": encoded, "label": lbl})
 
     f.close()
-    print(n_attack, n_benign)
 
-train_data, test_data, temp, temp1 = train_test_split(wave_data, wave_data, test_size=test_ratio)
+train_data, test_data = train_test_split(wave_data, test_size=test_ratio)
 
 n_classes = (np.unique(classes)).size
 
