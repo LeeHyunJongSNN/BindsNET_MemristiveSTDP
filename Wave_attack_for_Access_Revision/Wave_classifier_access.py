@@ -45,7 +45,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=60)
+parser.add_argument("--intensity", type=float, default=18)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -62,7 +62,7 @@ parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(plot=True, gpu=True)
+parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
@@ -90,7 +90,8 @@ dead_synapse = args.dead_synapse
 dead_synapse_input_num = args.dead_synapse_input_num
 dead_synapse_exc_num = args.dead_synapse_exc_num
 train = args.train
-plot = args.plot
+train_plot = args.train_plot
+test_plot = args.test_plot
 gpu = args.gpu
 spare_gpu = args.spare_gpu
 
@@ -161,7 +162,7 @@ classes = []
 
 fname = " "
 for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
-              "WIFI_10MHz_IQvector_18dB_20000.txt"]:
+              "WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -175,12 +176,10 @@ for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
         if len(linedata) == 0:
             continue
 
-        linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
-
-        linedata_fft_1 = np.fft.fft([x for x in linedata_labelremoved[16:80]])
-        linedata_fft_2 = np.fft.fft([x for x in linedata_labelremoved[96:160]])
-        linedata_fft_3 = np.fft.fft([x for x in linedata_labelremoved[192:256]])
-        linedata_fft_4 = np.fft.fft([x for x in linedata_labelremoved[256:len(linedata_labelremoved)]])
+        linedata_fft_1 = np.fft.fft([x for x in linedata[16:80]])
+        linedata_fft_2 = np.fft.fft([x for x in linedata[96:160]])
+        linedata_fft_3 = np.fft.fft([x for x in linedata[192:256]])
+        linedata_fft_4 = np.fft.fft([x for x in linedata[256:len(linedata) - 1]])
         linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + \
                        linedata_fft_3.tolist() + linedata_fft_4.tolist()
 
@@ -267,8 +266,8 @@ perf_ax = None
 voltage_axes, voltage_ims = None, None
 
 # Random variables
-rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
+rand_gmax = torch.rand(num_inputs, n_neurons)
+rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
 dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
 
@@ -369,7 +368,7 @@ for epoch in range(n_epochs):
         spike_record[step % update_interval] = spikes["Ae"].get("s").squeeze()
 
         # Optionally plot various simulation information.
-        if plot:
+        if train_plot:
             image = batch["encoded_image"].view(num_inputs, time)
             inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
             input_exc_weights = network.connections[("X", "Ae")].w * 100    # Scaling for plotting
@@ -450,6 +449,18 @@ for step, batch in enumerate(test_data):
         proportions=proportions,
         n_labels=n_classes,
     )
+
+    if test_plot:
+        image = batch["encoded_image"].view(num_inputs, time)
+        inpt = inputs["X"].view(time, test_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
+        spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
+
+        spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
+        inpt_axes, inpt_ims = plot_input(
+            image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
+        )
+
+        plt.pause(1e-8)
 
     # print(accuracy["all"], label_tensor.long(), all_activity_pred)
     # Compute network accuracy according to available classification strategies.

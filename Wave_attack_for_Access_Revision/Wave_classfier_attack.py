@@ -49,7 +49,7 @@ parser.add_argument("--intensity", type=float, default=60)
 parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
-parser.add_argument("--test_ratio", type=float, default=0.9995)
+parser.add_argument("--test_ratio", type=float, default=0.95)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
@@ -64,7 +64,7 @@ parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(plot=True, gpu=True)
+parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
@@ -94,7 +94,8 @@ dead_synapse_exc_num = args.dead_synapse_exc_num
 attack_mean = args.attack_mean
 attack_stddev = args.attack_stddev
 train = args.train
-plot = args.plot
+train_plot = args.train_plot
+test_plot = args.test_plot
 gpu = args.gpu
 spare_gpu = args.spare_gpu
 
@@ -300,8 +301,8 @@ perf_ax = None
 voltage_axes, voltage_ims = None, None
 
 # Random variables
-rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
+rand_gmax = torch.rand(num_inputs, n_neurons)
+rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
 dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
 
@@ -402,7 +403,7 @@ for epoch in range(n_epochs):
         spike_record[step % update_interval] = spikes["Ae"].get("s").squeeze()
 
         # Optionally plot various simulation information.
-        if plot:
+        if train_plot:
             image = batch["encoded_image"].view(num_inputs, time)
             inpt = inputs["X"].view(time, processed_traindata[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
             input_exc_weights = network.connections[("X", "Ae")].w * 100    # Scaling for plotting
@@ -484,10 +485,12 @@ for step, batch in enumerate(attacked_testdata):
         n_labels=n_classes,
     )
 
-    if plot:
+    if test_plot:
         image = batch["encoded_image"].view(num_inputs, time)
-        inpt = inputs["X"].view(time, processed_traindata[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
+        inpt = inputs["X"].view(time, attacked_testdata[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
+        spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
 
+        spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
         inpt_axes, inpt_ims = plot_input(
             image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
         )
