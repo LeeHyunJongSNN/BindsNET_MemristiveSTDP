@@ -1,6 +1,5 @@
 import os
 import gc
-
 import torch
 import argparse
 import random
@@ -13,9 +12,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import minmax_scale
 from scipy.signal import detrend
 
-from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder, RankOrderTTFSEncoder
-from bindsnet.nonlinear.NLmodels import TTFSNetwork_NonLinear, DiehlAndCook2015_NonLinear
-from bindsnet.nonlinear.NLlearning import NonLinear, NonLinear_Simplified
+from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
+from bindsnet.memstdp import RankOrderTTFSEncoder
+from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
+from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
 from bindsnet.evaluation import (
@@ -31,7 +31,7 @@ from bindsnet.analysis.plotting import (
     plot_performance,
     plot_voltages,
 )
-from bindsnet.nonlinear.plotting_weights_counts import hist_weights
+from bindsnet.memstdp.plotting_weights_counts import hist_weights
 
 random_seed = random.randint(0, 100)
 parser = argparse.ArgumentParser()
@@ -48,7 +48,7 @@ parser.add_argument("--theta_plus", type=float, default=0.003)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
 parser.add_argument("--intensity", type=float, default=200)
-parser.add_argument("--encoder", dest="encoder_type", default="PoissonEncoder")
+parser.add_argument("--encoder", dest="encoder_type", default="RankOrderTTFSEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
 parser.add_argument("--test_ratio", type=float, default=0.99)
@@ -216,12 +216,12 @@ num_inputs = train_data[-1]["encoded_image"].shape[1]
 print(n_train, n_test, n_classes)
 
 # Build network.
-network = DiehlAndCook2015_NonLinear(
+network = DiehlAndCook2015_MemSTDP(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
     exc=exc,
     inh=inh,
-    update_rule=NonLinear,
+    update_rule=MemristiveSTDP,
     dt=dt,
     norm=1.0,
     theta_plus=theta_plus,
