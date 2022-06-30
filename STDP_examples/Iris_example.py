@@ -10,7 +10,8 @@ from time import time as t
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
 
-from bindsnet.encoding import PoissonEncoder, RankOrderTTFSEncoder
+from bindsnet.encoding import PoissonEncoder
+from bindsnet.memstdp import RankOrderTTFSEncoder
 from bindsnet.memstdp.MemSTDP_models import DiehlAndCook2015_MemSTDP
 from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP
 from bindsnet.learning.learning import PostPre
