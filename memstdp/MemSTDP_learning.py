@@ -284,7 +284,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -345,7 +345,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -406,7 +406,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -473,7 +473,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -620,7 +620,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -681,7 +681,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -742,7 +742,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -809,7 +809,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                         if torch.numel(torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -1039,7 +1039,7 @@ class MemristiveSTDP(LearningRule):
                                 torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -1122,7 +1122,7 @@ class MemristiveSTDP(LearningRule):
                                 torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -1197,7 +1197,7 @@ class MemristiveSTDP(LearningRule):
                                 torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -1289,7 +1289,7 @@ class MemristiveSTDP(LearningRule):
                                 torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -1453,7 +1453,7 @@ class MemristiveSTDP(LearningRule):
                                 torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -1536,7 +1536,7 @@ class MemristiveSTDP(LearningRule):
                                 torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -1611,7 +1611,7 @@ class MemristiveSTDP(LearningRule):
                                 torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
@@ -1703,7 +1703,7 @@ class MemristiveSTDP(LearningRule):
                                 torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
                             Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
                             Ae_index_LTD = torch.nonzero(
-                                target_r[time - pulse_time_LTD])  # Latest update nueron index of LTD
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
                             if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
                                 X_cause_index = torch.nonzero(
                                     source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
