@@ -11,8 +11,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
 
 from bindsnet.encoding import PoissonEncoder, RankOrderTTFSEncoder
-from bindsnet.nonlinear.NLmodels import DiehlAndCook2015_NonLinear
-from bindsnet.nonlinear.NLlearning import NonLinear, PostPre
+from bindsnet.memstdp.MemSTDP_models import DiehlAndCook2015_MemSTDP
+from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP
+from bindsnet.learning.learning import PostPre
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
 from bindsnet.evaluation import (
@@ -28,7 +29,7 @@ from bindsnet.analysis.plotting import (
     plot_performance,
     plot_voltages,
 )
-from bindsnet.nonlinear.plotting_weights_counts import hist_weights
+from bindsnet.memstdp.plotting_weights_counts import hist_weights
 
 # Set hyper parameters
 gpu = True
@@ -113,12 +114,12 @@ num_inputs = train_data[-1]["encoded_image"].shape[1]
 print(n_train, n_test, n_classes)
 
 # Build network
-network = DiehlAndCook2015_NonLinear(
+network = DiehlAndCook2015_MemSTDP(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
     exc=exc,
     inh=inh,
-    update_rule=NonLinear,
+    update_rule=MemristiveSTDP,
     dt=dt,
     norm=1.0,
     theta_plus=theta_plus,

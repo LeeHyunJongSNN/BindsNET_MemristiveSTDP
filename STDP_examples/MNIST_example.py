@@ -20,11 +20,11 @@ from bindsnet.analysis.plotting import (
 from bindsnet.datasets import MNIST
 from bindsnet.encoding import PoissonEncoder
 from bindsnet.evaluation import all_activity, assign_labels, proportion_weighting
-from bindsnet.nonlinear.NLmodels import DiehlAndCook2015_NonLinear
-from bindsnet.nonlinear.NLlearning import NonLinear, NonLinear_Simplified
+from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
+from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
-from bindsnet.nonlinear.plotting_weights_counts import hist_weights
+from bindsnet.memstdp.plotting_weights_counts import hist_weights
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", type=int, default=0)
@@ -92,17 +92,17 @@ n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 num_inputs = 784
 dead_synapse_input_num = 5
 dead_synapse_exc_num = 2
-vLTD = 0.0
-vLTP = 0.0
+vLTP = 10.0
+vLTD = 10.0
 beta = 1.0
 random_G = True
 dead_synapse = False
 
 # Build network.
-network = DiehlAndCook2015_NonLinear(
+network = DiehlAndCook2015_MemSTDP(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
-    update_rule=NonLinear_Simplified,
+    update_rule=MemristiveSTDP_Simplified,
     exc=exc,
     inh=inh,
     dt=dt,
