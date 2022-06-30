@@ -2,7 +2,7 @@ from typing import Iterable, Iterator, Optional, Union
 
 import torch
 
-from bindsnet.encoding.encodings import bernoulli, poisson, rank_order, rank_order_TTFS
+from bindsnet.memstdp.add_encodings import rank_order_TTFS
 
 def rank_order_TTFS_loader(
     data: Union[torch.Tensor, Iterable[torch.Tensor]],
