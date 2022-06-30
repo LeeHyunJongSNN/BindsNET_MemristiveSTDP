@@ -1,4 +1,4 @@
-# BindsNET_NonLinear
+# BindsNET_MemristiveSTDP
 Non-linear STDP update rule for BindsNET.
 You can see Non-linear STDP update rule in nonlinear folder.
 Also there are additional neural encdoer in encoding folder.
