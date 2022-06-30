@@ -10,10 +10,10 @@ from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
 
-from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder, \
-    RankOrderTTFSEncoder
-from bindsnet.nonlinear.NLmodels import TTFSNetwork_NonLinear, DiehlAndCook2015_NonLinear
-from bindsnet.nonlinear.NLlearning import NonLinear, NonLinear_Simplified
+from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
+from bindsnet.memstdp import RankOrderTTFSEncoder
+from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
+from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
 from bindsnet.evaluation import (
@@ -29,7 +29,7 @@ from bindsnet.analysis.plotting import (
     plot_performance,
     plot_voltages,
 )
-from bindsnet.nonlinear.plotting_weights_counts import hist_weights
+from bindsnet.memstdp.plotting_weights_counts import hist_weights
 
 random_seed = random.randint(0, 100)
 parser = argparse.ArgumentParser()
@@ -209,12 +209,12 @@ num_inputs = train_data[-1]["encoded_image"].shape[1]
 print(n_train, n_test, n_classes)
 
 # Build network.
-network = DiehlAndCook2015_NonLinear(
+network = DiehlAndCook2015_MemSTDP(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
     exc=exc,
     inh=inh,
-    update_rule=NonLinear_Simplified,
+    update_rule=MemristiveSTDP_Simplified,
     dt=dt,
     norm=1.0,
     theta_plus=theta_plus,
@@ -266,8 +266,8 @@ perf_ax = None
 voltage_axes, voltage_ims = None, None
 
 # Random variables
-rand_gmax = torch.rand(num_inputs, n_neurons)
-rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
+rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
 dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
 
