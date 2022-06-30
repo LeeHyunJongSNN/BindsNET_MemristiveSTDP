@@ -1,4 +1,4 @@
-from bindsnet.encoding import encodings
+from bindsnet.memstdp import add_encodings
 
 
 class Encoder:
@@ -30,4 +30,4 @@ class RankOrderTTFSEncoder(Encoder):
         """
         super().__init__(time, dt=dt, **kwargs)
 
-        self.enc = encodings.rank_order_TTFS
+        self.enc = add_encodings.rank_order_TTFS
