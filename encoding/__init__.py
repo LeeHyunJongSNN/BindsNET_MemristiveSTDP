@@ -11,7 +11,6 @@ from .encoders import (
     NullEncoder,
     PoissonEncoder,
     RankOrderEncoder,
-    RankOrderTTFSEncoder,
     RepeatEncoder,
     SingleEncoder,
 )
@@ -35,5 +34,4 @@ __all__ = [
     "BernoulliEncoder",
     "PoissonEncoder",
     "RankOrderEncoder",
-    "RankOrderTTFSEncoder"
 ]
