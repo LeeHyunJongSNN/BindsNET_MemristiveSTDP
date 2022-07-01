@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
+from scipy.signal import detrend
 
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
 from bindsnet.memstdp import RankOrderTTFSEncoder
@@ -57,6 +58,11 @@ parser.add_argument("--beta", type=float, default=1.0)
 parser.add_argument("--dead_synapse", type=bool, default=False)
 parser.add_argument("--dead_synapse_input_num", type=int, default=4)
 parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
+parser.add_argument("--attack_type", dest="scheme", default="Gaussian")
+parser.add_argument("--attack_mean", type=float, default=0)
+parser.add_argument("--attack_stddev", type=float, default=1)
+parser.add_argument("--attack_intensity", type=float, default=1)
+parser.add_argument("--noise_intensity", type=float, default=1)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -89,6 +95,11 @@ beta = args.beta
 dead_synapse = args.dead_synapse
 dead_synapse_input_num = args.dead_synapse_input_num
 dead_synapse_exc_num = args.dead_synapse_exc_num
+attack_type = args.attack_type
+attack_mean = args.attack_mean
+attack_stddev = args.attack_stddev
+attack_intensity = args.attack_intensity
+noise_intensity = args.noise_intensity
 train = args.train
 train_plot = args.train_plot
 test_plot = args.test_plot
@@ -154,15 +165,20 @@ elif enocder_type == "RepeatEncoder":
 else:
     print("Error!! There is no such encoder!!")
 
-train_data = []
-test_data = []
+naive_traindata = []
+naive_testdata = []
+naive_trainlabel = []
+naive_testlabel = []
 
 wave_data = []
-classes = []
+wave_classes = []
+
+processed_traindata = []
+attacked_testdata = []
 
 fname = " "
 for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
-              "WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
+              "WIFI_10MHz_IQvector_18dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -176,35 +192,84 @@ for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
         if len(linedata) == 0:
             continue
 
-        linedata_fft_1 = np.fft.fft([x for x in linedata[16:80]])
-        linedata_fft_2 = np.fft.fft([x for x in linedata[96:160]])
-        linedata_fft_3 = np.fft.fft([x for x in linedata[192:256]])
-        linedata_fft_4 = np.fft.fft([x for x in linedata[256:len(linedata) - 1]])
+        cl = int(linedata[-1].real)
+        wave_classes.append(cl)
+        wave_data.append(linedata)
+
+    f.close()
+
+naive_traindata, naive_testdata, naive_trainlabel, naive_testlabel = train_test_split(
+    wave_data, wave_classes, test_size=test_ratio)
+
+for j in range(len(naive_traindata)):
+
+    linedata_labelremoved = [x for x in naive_traindata[j][0:len(naive_traindata[j]) - 1]]
+
+    linedata_fft_1 = np.fft.fft([x for x in linedata_labelremoved[16:80]])
+    linedata_fft_2 = np.fft.fft([x for x in linedata_labelremoved[96:160]])
+    linedata_fft_3 = np.fft.fft([x for x in linedata_labelremoved[192:256]])
+    linedata_fft_4 = np.fft.fft([x for x in linedata_labelremoved[256:len(linedata_labelremoved)]])
+    linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + \
+                   linedata_fft_3.tolist() + linedata_fft_4.tolist()
+
+    linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
+
+    lbl_train = torch.tensor([naive_trainlabel[j]])
+
+    converted = torch.tensor(linedata_intensity)
+    train_encoded = encoder.enc(datum=converted, time=time, dt=dt)
+    processed_traindata.append({"encoded_image": train_encoded, "label": lbl_train})
+
+if attack_type == "Gaussian":
+    for k in range(len(naive_testdata)):
+        linedata_labelremoved = [x for x in naive_testdata[k][0:len(naive_testdata[k]) - 1]]
+        attack = (attack_stddev * np.random.randn(len(linedata_labelremoved)) + attack_mean) * attack_intensity
+        linedata_attacked = np.array(linedata_labelremoved) + attack
+
+        linedata_fft_1 = np.fft.fft([x for x in linedata_attacked[16:80]])
+        linedata_fft_2 = np.fft.fft([x for x in linedata_attacked[96:160]])
+        linedata_fft_3 = np.fft.fft([x for x in linedata_attacked[192:256]])
+        linedata_fft_4 = np.fft.fft([x for x in linedata_attacked[256:len(linedata_attacked)]])
         linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + \
                        linedata_fft_3.tolist() + linedata_fft_4.tolist()
 
         linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
 
-        # linedata_intensity = [intensity * abs(x) for x in linedata[0:len(linedata) - 1]]
-
-        cl = complex(linedata[-1])
-        classes.append(cl)
-        lbl = torch.tensor([cl])
+        lbl_test = torch.tensor([naive_testlabel[k]])
 
         converted = torch.tensor(linedata_intensity)
-        encoded = encoder.enc(datum=converted, time=time, dt=dt)
-        wave_data.append({"encoded_image": encoded, "label": lbl})
+        test_encoded = encoder.enc(datum=converted, time=time, dt=dt)
+        attacked_testdata.append({"encoded_image": test_encoded, "label": lbl_test})
 
-    f.close()
+elif attack_type == "Wave":
+    for k in range(len(naive_testdata)):
+        linedata_labelremoved = [x for x in naive_testdata[k][0:len(naive_testdata[k]) - 1]]
+        attack_noise = (attack_stddev * np.random.randn(len(linedata_labelremoved)) + attack_mean) * noise_intensity
+        attack = 32 * [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+        attack = (np.array(attack) + attack_noise) * attack_intensity
+        linedata_attacked = np.array(linedata_labelremoved) + attack
 
-train_data, test_data = train_test_split(wave_data, test_size=test_ratio)
+        linedata_fft_1 = np.fft.fft([x for x in linedata_attacked[16:80]])
+        linedata_fft_2 = np.fft.fft([x for x in linedata_attacked[96:160]])
+        linedata_fft_3 = np.fft.fft([x for x in linedata_attacked[192:256]])
+        linedata_fft_4 = np.fft.fft([x for x in linedata_attacked[256:len(linedata_attacked)]])
+        linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + \
+                       linedata_fft_3.tolist() + linedata_fft_4.tolist()
 
-n_classes = (np.unique(classes)).size
+        linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
 
-n_train = len(train_data)
-n_test = len(test_data)
+        lbl_test = torch.tensor([naive_testlabel[k]])
 
-num_inputs = train_data[-1]["encoded_image"].shape[1]
+        converted = torch.tensor(linedata_intensity)
+        test_encoded = encoder.enc(datum=converted, time=time, dt=dt)
+        attacked_testdata.append({"encoded_image": test_encoded, "label": lbl_test})
+
+n_classes = (np.unique(wave_classes)).size
+
+n_train = len(processed_traindata)
+n_test = len(attacked_testdata)
+
+num_inputs = processed_traindata[-1]["encoded_image"].shape[1]
 
 print(n_train, n_test, n_classes)
 
@@ -281,7 +346,7 @@ for epoch in range(n_epochs):
         print("Progress: %d / %d (%.4f seconds)" % (epoch, n_epochs, t() - start))
         start = t()
 
-    for step, batch in enumerate(tqdm(train_data)):
+    for step, batch in enumerate(tqdm(processed_traindata)):
         if step > n_train:
             break
         # Get next input sample.
@@ -370,10 +435,10 @@ for epoch in range(n_epochs):
         # Optionally plot various simulation information.
         if train_plot:
             image = batch["encoded_image"].view(num_inputs, time)
-            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
+            inpt = inputs["X"].view(time, processed_traindata[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
             input_exc_weights = network.connections[("X", "Ae")].w * 100    # Scaling for plotting
             square_weights = get_square_weights(
-               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 16
+               input_exc_weights.view(processed_traindata[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 16
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
@@ -413,7 +478,7 @@ start = t()
 
 pbar = tqdm(total=n_test)
 
-for step, batch in enumerate(test_data):
+for step, batch in enumerate(attacked_testdata):
     if step > n_test:
         break
     # Get next input sample.
@@ -452,7 +517,7 @@ for step, batch in enumerate(test_data):
 
     if test_plot:
         image = batch["encoded_image"].view(num_inputs, time)
-        inpt = inputs["X"].view(time, test_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
+        inpt = inputs["X"].view(time, attacked_testdata[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
         spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
 
         spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)

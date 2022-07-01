@@ -27,8 +27,11 @@ test_data = []
 wave_data = []
 wave_classes = []
 
+attack_type = "Gaussian"
 attack_stddev = 1
 attack_mean = 0
+attack_intensity = 1
+noise_intensity = 1
 
 abs_traindata = []
 abs_validdata = []
@@ -75,15 +78,27 @@ for j in range(len(valid_data)):
 
     abs_validdata.append(linedata_abs)
 
-for k in range(len(test_data)):
+if attack_type == "Gaussian":
+    for k in range(len(test_data)):
+        linedata_labelremoved = [x for x in test_data[k][0:len(test_data[k]) - 1]]
+        attack = (attack_stddev * np.random.randn(len(linedata_labelremoved)) + attack_mean) * attack_intensity
+        linedata_attacked = (np.array(linedata_labelremoved) + attack).tolist()
 
-    linedata_labelremoved = [x for x in test_data[k][0:len(test_data[k]) - 1]]
-    attack = attack_stddev * np.random.randn(len(linedata_labelremoved)) + attack_mean
-    linedata_attacked = (np.array(linedata_labelremoved) + attack).tolist()
+        linedata_abs = [abs(x) for x in linedata_attacked[0:len(linedata_attacked)]]
 
-    linedata_abs = [abs(x) for x in linedata_attacked[0:len(linedata_attacked)]]
+        attacked_testdata.append(linedata_abs)
 
-    attacked_testdata.append(linedata_abs)
+elif attack_type == "Wave":
+    for k in range(len(test_data)):
+        linedata_labelremoved = [x for x in test_data[k][0:len(test_data[k]) - 1]]
+        attack_noise = (attack_stddev * np.random.randn(len(linedata_labelremoved)) + attack_mean) * noise_intensity
+        attack = 32 * [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+        attack = (np.array(attack) + attack_noise) * attack_intensity
+        linedata_attacked = (np.array(linedata_labelremoved) + attack).tolist()
+
+        linedata_abs = [abs(x) for x in linedata_attacked[0:len(linedata_attacked)]]
+
+        attacked_testdata.append(linedata_abs)
 
 abs_traindata = pad_sequences(abs_traindata, maxlen=max_len)
 abs_validdata = pad_sequences(abs_validdata, maxlen=max_len)
