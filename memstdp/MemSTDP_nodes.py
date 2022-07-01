@@ -171,7 +171,7 @@ class AbstractInput(ABC):
 class AdaptiveIFNodes(Nodes):
     # language=rst
     """
-    Layer of `integrate-and-fire (IF) neurons <http://neuronaldynamics.epfl.ch/online/Ch1.S3.html>`_ with dynamic
+    Layer of `integrate-and-fire (IF) neurons <http://neuronaldynamics.epfl.ch/online/Ch1.S3.html>`_ with adaptive
     threshold.
     """
 
@@ -194,7 +194,7 @@ class AdaptiveIFNodes(Nodes):
     ) -> None:
         # language=rst
         """
-        Instantiates a layer of IF neurons.
+        Instantiates a layer of Adpative IF neurons.
 
         :param n: The number of neurons in the layer.
         :param shape: The dimensionality of the layer.
@@ -207,6 +207,7 @@ class AdaptiveIFNodes(Nodes):
         :param reset: Post-spike reset voltage.
         :param refrac: Refractory (non-firing) period of the neuron.
         :param lbound: Lower bound of the voltage.
+        :param theta_plus: Regulating factor for threshold.
         :param tc_theta_decay: Time constant of adaptive threshold decay.
         """
         super().__init__(
