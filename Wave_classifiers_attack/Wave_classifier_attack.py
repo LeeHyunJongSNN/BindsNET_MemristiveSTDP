@@ -46,7 +46,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.0009)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=12)
+parser.add_argument("--intensity", type=float, default=40)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -58,11 +58,11 @@ parser.add_argument("--beta", type=float, default=1.0)
 parser.add_argument("--dead_synapse", type=bool, default=False)
 parser.add_argument("--dead_synapse_input_num", type=int, default=4)
 parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
-parser.add_argument("--attack_type", dest="attack_type", default="Gaussian")
+parser.add_argument("--attack_type", dest="attack_type", default="Wave")
 parser.add_argument("--attack_mean", type=float, default=0)
 parser.add_argument("--attack_stddev", type=float, default=1)
-parser.add_argument("--attack_intensity", type=float, default=1)
-parser.add_argument("--noise_intensity", type=float, default=1)
+parser.add_argument("--attack_intensity", type=float, default=0.5)
+parser.add_argument("--noise_intensity", type=float, default=1/64)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -178,7 +178,7 @@ attacked_testdata = []
 
 fname = " "
 for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
-              "WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
+              "WIFI_10MHz_IQvector_18dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -331,8 +331,10 @@ perf_ax = None
 voltage_axes, voltage_ims = None, None
 
 # Random variables
-rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
+rand_gmax = torch.rand(num_inputs, n_neurons)
+rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
+# rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+# rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
 dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
 

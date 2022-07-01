@@ -45,7 +45,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.0009)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=11.9)
+parser.add_argument("--intensity", type=float, default=12)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -266,8 +266,10 @@ perf_ax = None
 voltage_axes, voltage_ims = None, None
 
 # Random variables
-rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
+rand_gmax = torch.rand(num_inputs, n_neurons)
+rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
+# rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+# rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
 dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
 
