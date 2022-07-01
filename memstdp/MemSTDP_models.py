@@ -41,7 +41,7 @@ class DiehlAndCook2015_MemSTDP(Network):
     ) -> None:
         # language=rst
         """
-        Constructor for class ``DiehlAndCook2015_Nonlinear``.
+        Constructor for class ``DiehlAndCook2015_MemristiveSTDP``.
 
         :param n_inpt: Number of input neurons. Matches the 1D size of the input data.
         :param n_neurons: Number of excitatory, inhibitory neurons.
