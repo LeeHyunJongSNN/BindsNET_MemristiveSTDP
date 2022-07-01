@@ -136,7 +136,7 @@ class MemristiveSTDP_Simplified(LearningRule):
     This rule is simplified STDP with memristive characteristic.
     It involves both pre-synaptic and post-synaptic spiking activity.
     By default, pre-synaptic update is LTD and the post-synaptic update is LTP.
-    This rule doesn't allow input neurons' spiking proportion to affect synaptic weights reguation.
+    This rule doesn't allow input neurons' spiking proportion to affect synaptic weights regulation.
     """
 
     def __init__(
@@ -149,7 +149,7 @@ class MemristiveSTDP_Simplified(LearningRule):
     ) -> None:
         # language=rst
         """
-        Constructor for ``NonLinear`` learning rule.
+        Constructor for ``MemristiveSTDP_Simplified`` learning rule.
         :param connection: An ``AbstractConnection`` object whose weights the
             ``NonLinear`` learning rule will modify.
         :param nu: Single or pair of learning rates for pre- and post-synaptic events.
@@ -895,7 +895,7 @@ class MemristiveSTDP(LearningRule):
     ) -> None:
         # language=rst
         """
-        Constructor for ``NonLinear`` learning rule.
+        Constructor for ``MemristiveSTDP`` learning rule.
 
         :param connection: An ``AbstractConnection`` object whose weights the
             ``NonLinear`` learning rule will modify.
