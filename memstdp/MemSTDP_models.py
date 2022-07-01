@@ -137,7 +137,7 @@ class DiehlAndCook2015_MemSTDP(Network):
 class AdaptiveIFNetwork_MemSTDP(Network):
     # language=rst
     """
-    Implements the spiking neural network architecture for simple IFneurons with adaptive threshold.
+    Implements the spiking neural network architecture for simple IF neurons with adaptive threshold.
     """
 
     def __init__(
