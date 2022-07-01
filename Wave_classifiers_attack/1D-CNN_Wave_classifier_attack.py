@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Embedding, Dropout, Conv1D, GlobalMaxPooling1D, Dense
-from keras.optimizer_v2 import adam
+from keras.optimizers.optimizer_v2 import adam
 from keras_preprocessing.sequence import pad_sequences
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.model_selection import train_test_split
