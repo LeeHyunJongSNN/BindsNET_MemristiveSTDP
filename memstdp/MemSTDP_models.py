@@ -159,7 +159,7 @@ class AdaptiveIFNetwork_MemSTDP(Network):
     ) -> None:
         # language=rst
         """
-        Constructor for class ``TTFSNetwork_Nonlinear_Classfication``.
+        Constructor for class ``AdaptiveIFNetwork_MemSTDP``.
 
         :param n_inpt: Number of input neurons. Matches the 1D size of the input data.
         :param n_neurons: Number of excitatory, inhibitory neurons.
@@ -174,9 +174,9 @@ class AdaptiveIFNetwork_MemSTDP(Network):
         :param wmax: Maximum allowed weight on input to excitatory synapses.
         :param norm: Input to excitatory layer connection weights normalization
             constant.
-        :param theta_plus: On-spike increment of ``DiehlAndCookNodes`` membrane
+        :param theta_plus: On-spike increment of ``AdaptiveIFNodes`` membrane
             threshold potential.
-        :param tc_theta_decay: Time constant of ``DiehlAndCookNodes`` threshold
+        :param tc_theta_decay: Time constant of ``AdaptiveIFNodes`` threshold
             potential decay.
         :param inpt_shape: The dimensionality of the input layer.
         """
