@@ -46,7 +46,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.0009)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=11.9)
+parser.add_argument("--intensity", type=float, default=12)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -178,7 +178,7 @@ attacked_testdata = []
 
 fname = " "
 for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
-              "WIFI_10MHz_IQvector_18dB_20000.txt"]:
+              "WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
