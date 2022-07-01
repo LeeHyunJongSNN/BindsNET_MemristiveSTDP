@@ -207,7 +207,7 @@ class AdaptiveIFNodes(Nodes):
         :param reset: Post-spike reset voltage.
         :param refrac: Refractory (non-firing) period of the neuron.
         :param lbound: Lower bound of the voltage.
-        :param theta_plus: Regulating factor for threshold.
+        :param theta_plus: On-spike increment of membrane threshold potential.
         :param tc_theta_decay: Time constant of adaptive threshold decay.
         """
         super().__init__(
