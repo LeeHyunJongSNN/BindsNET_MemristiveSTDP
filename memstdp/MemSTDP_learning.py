@@ -344,7 +344,8 @@ class MemristiveSTDP_Simplified(LearningRule):
                                 for i in range(X_size):
                                     if i in X_cause_index:
                                         for k in Ae_index_LTD:
-                                            self.connection.w[i, k.item()] -= (gmax[i, k.item()] - gmin[i, k.item()]) / 256
+                                            self.connection.w[i, k.item()] -= (gmax[i, k.item()] -
+                                                                               gmin[i, k.item()]) / 256
 
                     if time == simulation_time - 1:
                         for l in range(time - pulse_time_LTD, time + 1):
@@ -358,8 +359,8 @@ class MemristiveSTDP_Simplified(LearningRule):
                                     for i in range(X_size):
                                         if i in X_cause_index:
                                             for k in Ae_index_LTD:
-                                                self.connection.w[i, k.item()] -= (gmax[i, k.item()] - gmin[
-                                                    i, k.item()]) / 256
+                                                self.connection.w[i, k.item()] -= (gmax[i, k.item()] -
+                                                                                   gmin[i, k.item()]) / 256
 
         elif vltp == 0 and vltd != 0:  # Half nonlinear update
             if torch.numel(update_index_and_time) == 0:
