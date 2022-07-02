@@ -39,7 +39,7 @@ attacked_testdata = []
 
 fname = " "
 for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
-              "WIFI_10MHz_IQvector_18dB_20000.txt"]:
+              "WIFI_10MHz_IQvector_18dB_60000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -73,7 +73,7 @@ for i in range(len(train_data)):
     abs_traindata.append(linedata_abs)
 
 for j in range(len(valid_data)):
-    linedata_labelremoved = [x for x in train_data[j][0:len(train_data[i]) - 1]]
+    linedata_labelremoved = [x for x in valid_data[j][0:len(valid_data[j]) - 1]]
     linedata_abs = [abs(x) for x in linedata_labelremoved[0:len(linedata_labelremoved)]]
 
     abs_validdata.append(linedata_abs)
@@ -107,9 +107,9 @@ train_label = np.array(train_label)
 valid_label = np.array(valid_label)
 test_label = np.array(test_label)
 
-print('train size :', train_data.shape)
-print('valid size :', valid_data.shape)
-print('test size :', test_data.shape)
+print('train size :', abs_traindata.shape)
+print('valid size :', abs_validdata.shape)
+print('test size :', attacked_testdata.shape)
 
 adam = adam.Adam(lr=0.001, beta_1=0.9, beta_2=0.999)
 
