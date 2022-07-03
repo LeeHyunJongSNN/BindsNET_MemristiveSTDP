@@ -181,12 +181,12 @@ class MemristiveSTDP_Simplified(LearningRule):
     def _connection_update(self ,**kwargs) -> None:
         # language=rst
         """
-        NonLinear learning rule for ``Connection`` subclass of ``AbstractConnection``
+        Simplified Memristive STDP learning rule for ``Connection`` subclass of ``AbstractConnection``
         class.
         """
         batch_size = self.source.batch_size
 
-        # Calculate LTP, LTD cases
+        # Information of input and excitatory spikes
         source_s = self.source.s.view(-1).long()
         target_s = self.target.s.view(-1).long()
         X_size = torch.numel(source_s)
@@ -344,8 +344,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                 for i in range(X_size):
                                     if i in X_cause_index:
                                         for k in Ae_index_LTD:
-                                            self.connection.w[i, k.item()] -= (gmax[i, k.item()] -
-                                                                               gmin[i, k.item()]) / 256
+                                            self.connection.w[i, k.item()] -= (gmax[i, k.item()] - gmin[i, k.item()]) / 256
 
                     if time == simulation_time - 1:
                         for l in range(time - pulse_time_LTD, time + 1):
@@ -359,8 +358,8 @@ class MemristiveSTDP_Simplified(LearningRule):
                                     for i in range(X_size):
                                         if i in X_cause_index:
                                             for k in Ae_index_LTD:
-                                                self.connection.w[i, k.item()] -= (gmax[i, k.item()] -
-                                                                                   gmin[i, k.item()]) / 256
+                                                self.connection.w[i, k.item()] -= (gmax[i, k.item()] - gmin[
+                                                    i, k.item()]) / 256
 
         elif vltp == 0 and vltd != 0:  # Half nonlinear update
             if torch.numel(update_index_and_time) == 0:
@@ -486,7 +485,7 @@ class MemristiveSTDP_Simplified(LearningRule):
     def _conv2d_connection_update(self, **kwargs) -> None:
         # language=rst
         """
-        Post-pre learning rule for ``Conv2dConnection`` subclass of
+        Simplified Memristive STDP learning rule for ``Conv2dConnection`` subclass of
         ``AbstractConnection`` class.
         """
         # Get convolutional layer parameters
@@ -494,7 +493,7 @@ class MemristiveSTDP_Simplified(LearningRule):
         padding, stride = self.connection.padding, self.connection.stride
         batch_size = self.source.batch_size
 
-        # Calculate LTP, LTD cases
+        # Information of input and excitatory spikes
         source_s = self.source.s.view(-1).long()
         target_s = self.target.s.view(-1).long()
         X_size = torch.numel(source_s)
@@ -873,12 +872,12 @@ class MemristiveSTDP(LearningRule):
     def _connection_update(self ,**kwargs) -> None:
         # language=rst
         """
-        NonLinear learning rule for ``Connection`` subclass of ``AbstractConnection``
+        Memristive STDP learning rule for ``Connection`` subclass of ``AbstractConnection``
         class.
         """
         batch_size = self.source.batch_size
 
-        # Calculate LTP, LTD cases
+        # Information of input and excitatory spikes
         source_s = self.source.s.view(-1).long()
         target_s = self.target.s.view(-1).long()
         X_size = torch.numel(source_s)
@@ -1231,7 +1230,7 @@ class MemristiveSTDP(LearningRule):
     def _conv2d_connection_update(self, **kwargs) -> None:
         # language=rst
         """
-        Post-pre learning rule for ``Conv2dConnection`` subclass of
+        Memristive learning rule for ``Conv2dConnection`` subclass of
         ``AbstractConnection`` class.
         """
         # Get convolutional layer parameters
@@ -1239,7 +1238,7 @@ class MemristiveSTDP(LearningRule):
         padding, stride = self.connection.padding, self.connection.stride
         batch_size = self.source.batch_size
 
-        # Calculate LTP, LTD cases
+        # Information of input and excitatory spikes
         source_s = self.source.s.view(-1).long()
         target_s = self.target.s.view(-1).long()
         X_size = torch.numel(source_s)
