@@ -1029,7 +1029,7 @@ class MemristiveSTDP(LearningRule):
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
                                         self.connection.w[i, k.item()] += (-self.connection.w[i, k.item()] + g1ltp[
-                                            i, k.item()] + gmin[i, k.ietm()]) * (1 - np.exp(-vltp * b / 256))
+                                            i, k.item()] + gmin[i, k.itemm()]) * (1 - np.exp(-vltp * b / 256))
 
                 elif Ae_time_LTP >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
@@ -1042,7 +1042,7 @@ class MemristiveSTDP(LearningRule):
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
                                         self.connection.w[i, k.item()] += (-self.connection.w[i, k.item()] + g1ltp[
-                                            i, k.item()] + gmin[i, k.ietm()]) * (1 - np.exp(-vltp * b / 256))
+                                            i, k.item()] + gmin[i, k.itemm()]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(
@@ -1169,7 +1169,7 @@ class MemristiveSTDP(LearningRule):
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
                                         self.connection.w[i, k.item()] += (-self.connection.w[i, k.item()] + g1ltp[
-                                            i, k.item()] + gmin[i, k.ietm()]) * (1 - np.exp(-vltp * b / 256))
+                                            i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
 
                 elif Ae_time_LTP >= pulse_time_LTP:
@@ -1183,7 +1183,7 @@ class MemristiveSTDP(LearningRule):
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
                                         self.connection.w[i, k.item()] += (-self.connection.w[i, k.item()] + g1ltp[
-                                            i, k.item()] + gmin[i, k.ietm()]) * (1 - np.exp(-vltp * b / 256))
+                                            i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(
@@ -1390,7 +1390,7 @@ class MemristiveSTDP(LearningRule):
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
                                         self.connection.w[i, k.item()] += (-self.connection.w[i, k.item()] + g1ltp[
-                                            i, k.item()] + gmin[i, k.ietm()]) * (1 - np.exp(-vltp * b / 256))
+                                            i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
                 elif Ae_time_LTP >= pulse_time_LTP:
                     if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
@@ -1403,7 +1403,7 @@ class MemristiveSTDP(LearningRule):
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
                                         self.connection.w[i, k.item()] += (-self.connection.w[i, k.item()] + g1ltp[
-                                            i, k.item()] + gmin[i, k.ietm()]) * (1 - np.exp(-vltp * b / 256))
+                                            i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(
@@ -1530,7 +1530,7 @@ class MemristiveSTDP(LearningRule):
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
                                         self.connection.w[i, k.item()] += (-self.connection.w[i, k.item()] + g1ltp[
-                                            i, k.item()] + gmin[i, k.ietm()]) * (1 - np.exp(-vltp * b / 256))
+                                            i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
 
                 elif Ae_time_LTP >= pulse_time_LTP:
@@ -1544,7 +1544,7 @@ class MemristiveSTDP(LearningRule):
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
                                         self.connection.w[i, k.item()] += (-self.connection.w[i, k.item()] + g1ltp[
-                                            i, k.item()] + gmin[i, k.ietm()]) * (1 - np.exp(-vltp * b / 256))
+                                            i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
                     if time - pulse_time_LTD > 0:
                         if torch.numel(
