@@ -151,7 +151,7 @@ class MemristiveSTDP_Simplified(LearningRule):
         """
         Constructor for ``MemristiveSTDP_Simplified`` learning rule.
         :param connection: An ``AbstractConnection`` object whose weights the
-            ``NonLinear`` learning rule will modify.
+            ``MemristiveSTDP_Simplifeid`` learning rule will modify.
         :param nu: Single or pair of learning rates for pre- and post-synaptic events.
         :param reduction: Method for reducing parameter updates along the batch
             dimension.
@@ -842,7 +842,7 @@ class MemristiveSTDP(LearningRule):
         Constructor for ``MemristiveSTDP`` learning rule.
 
         :param connection: An ``AbstractConnection`` object whose weights the
-            ``NonLinear`` learning rule will modify.
+            ``MemristiveSTDP`` learning rule will modify.
         :param nu: Single or pair of learning rates for pre- and post-synaptic events.
         :param reduction: Method for reducing parameter updates along the batch
             dimension.
