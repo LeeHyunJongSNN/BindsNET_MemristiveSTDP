@@ -202,14 +202,12 @@ class MemristiveSTDP_Simplified(LearningRule):
         target_r = torch.tensor(t_record)
 
         # Time variables
-        time = len(source_r) - 1
+        time = len(source_r)
         pulse_time_LTP = 45  # Change this factcor when you want to change LTP time slot
         pulse_time_LTD = 45   # Change this factcor when you want to change LTD time slot
 
         # STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
-        update_time_index = 0
-        update_num_index = 0
         X_cause_index = 0
         Ae_time_LTP = 0
         Ae_time_LTD = 0
@@ -290,7 +288,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                         for k in Ae_index_LTD:
                                             self.connection.w[i, k.item()] -= (gmax[i, k.item()] - gmin[i, k.item()]) / 256
 
-                    if time == simulation_time - 1:
+                    if time == simulation_time:
                         for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[l])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
@@ -346,7 +344,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                         for k in Ae_index_LTD:
                                             self.connection.w[i, k.item()] -= (gmax[i, k.item()] - gmin[i, k.item()]) / 256
 
-                    if time == simulation_time - 1:
+                    if time == simulation_time:
                         for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[l])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
@@ -401,7 +399,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                             self.connection.w[i, k.item()] -= (self.connection.w[i, k.item()] + g1ltd[
                                                 i, k.item()] - gmax[i, k.item()]) * (1 - np.exp(vltd / 256))
 
-                    if time == simulation_time - 1:
+                    if time == simulation_time:
                         for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[l])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
@@ -461,7 +459,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                             self.connection.w[i, k.item()] -= (self.connection.w[i, k.item()] + g1ltd[
                                                 i, k.item()] - gmax[i, k.item()]) * (1 - np.exp(vltd / 256))
 
-                    if time == simulation_time - 1:
+                    if time == simulation_time:
                         for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[l])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
@@ -480,6 +478,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                                                                               1 - np.exp(vltd / 256))
 
         super().update()
+
 
 class MemristiveSTDP(LearningRule):
     # language=rst
@@ -554,14 +553,12 @@ class MemristiveSTDP(LearningRule):
         target_r = torch.tensor(t_record)
 
         # Time variables
-        time = len(source_r) - 1
+        time = len(source_r)
         pulse_time_LTP = 45  # Change this factcor when you want to change LTP time slot
         pulse_time_LTD = 45   # Change this factcor when you want to change LTD time slot
 
         # STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
-        update_time_index = 0
-        update_num_index = 0
         X_cause_index = 0
         X_cause_count = 0
         Ae_time_LTP = 0
@@ -655,7 +652,7 @@ class MemristiveSTDP(LearningRule):
                                                 self.connection.w[i, k.item()] -= (gmax[i, k.item()] -
                                                                                    gmin[i, k.item()]) / 256
 
-                    if time == simulation_time - 1:
+                    if time == simulation_time:
                         for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
@@ -723,7 +720,7 @@ class MemristiveSTDP(LearningRule):
                                                 self.connection.w[i, k.item()] -= (gmax[i, k.item()] -
                                                                                    gmin[i, k.item()]) / 256
 
-                    if time == simulation_time - 1:
+                    if time == simulation_time:
                         for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
@@ -793,7 +790,7 @@ class MemristiveSTDP(LearningRule):
                                                                                         i, k.item()]) * (
                                                                                                1 - np.exp(vltd / 256))
 
-                    if time == simulation_time - 1:
+                    if time == simulation_time:
                         for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
@@ -866,7 +863,7 @@ class MemristiveSTDP(LearningRule):
                                                                                         i, k.item()]) * (
                                                                                            1 - np.exp(vltd / 256))
 
-                    if time == simulation_time - 1:
+                    if time == simulation_time:
                         for l in range(time - pulse_time_LTD, time + 1):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
@@ -886,3 +883,4 @@ class MemristiveSTDP(LearningRule):
                                                                                                1 - np.exp(vltd / 256))
 
         super().update()
+
