@@ -15,7 +15,7 @@ from scipy.signal import detrend
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
 from bindsnet.memstdp import RankOrderTTFSEncoder
 from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
-from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified
+from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified, MemristiveSTDP_TimeProportion
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
 from bindsnet.evaluation import (
@@ -51,12 +51,12 @@ parser.add_argument("--intensity", type=float, default=200)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
-parser.add_argument("--test_ratio", type=float, default=0.99)
+parser.add_argument("--test_ratio", type=float, default=0.95)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
-parser.add_argument("--dead_synapse", type=bool, default=False)
+parser.add_argument("--dead_synapse", type=bool, default=True)
 parser.add_argument("--dead_synapse_input_num", type=int, default=8)
 parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
 parser.add_argument("--train", dest="train", action="store_true")
@@ -64,7 +64,7 @@ parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
+parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
@@ -163,8 +163,8 @@ wave_data = []
 classes = []
 
 fname = " "
-for fname in ["C:/Pycharm BindsNET/Simple_Waves_RF/"
-              "(square+sawtooth)_1kHz_10_amplitude_18dB_20000.txt"]:
+for fname in ["D:/SNN_dataset/Simple_Waves_RF/"
+              "(sine+square)_1kHz_10_amplitude_0dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -275,8 +275,10 @@ voltage_axes, voltage_ims = None, None
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
+dead_index_input = []
+for i in range(dead_synapse_exc_num):
+    dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
 
 # Train the network.
 print("\nBegin training.\n")
@@ -364,8 +366,7 @@ for epoch in range(n_epochs):
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
-                    dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
+                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")

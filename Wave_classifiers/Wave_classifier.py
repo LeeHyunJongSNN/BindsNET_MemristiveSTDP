@@ -14,7 +14,7 @@ from scipy.signal import detrend
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
 from bindsnet.memstdp import RankOrderTTFSEncoder
 from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
-from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified
+from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified, MemristiveSTDP_TimeProportion
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
 from bindsnet.evaluation import (
@@ -46,7 +46,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.0001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=1650)
+parser.add_argument("--intensity", type=float, default=600)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -115,6 +115,7 @@ else:
         gpu = False
 
 torch.set_num_threads(os.cpu_count() - 1)
+
 print("Running on Device =", device)
 print("Random Seed =", random_seed)
 print("Random G value =", random_G)
@@ -162,8 +163,8 @@ wave_data = []
 classes = []
 
 fname = " "
-for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
-              "WIFI_10MHz_IQvector_18dB_20000.txt"]:
+for fname in ["D:/SNN_dataset/Wi-Fi_Preambles/"
+              "WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -178,8 +179,7 @@ for fname in ["C:/Pycharm BindsNET/Wi-Fi_Preambles/"
             continue
 
         linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
-        linedata_dcremoved = linedata_labelremoved - np.mean(linedata_labelremoved)
-        linedata_dcremoved = detrend(linedata_dcremoved)    # removing DC offset
+        linedata_dcremoved = detrend(linedata_labelremoved - np.mean(linedata_labelremoved))    # removing DC offset
 
         linedata_fft_1 = np.fft.fft([x for x in linedata_dcremoved[16:80]]) / 64
         linedata_fft_2 = np.fft.fft([x for x in linedata_dcremoved[96:160]]) / 64
@@ -273,8 +273,10 @@ voltage_axes, voltage_ims = None, None
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
+dead_index_input = []
+for i in range(dead_synapse_exc_num):
+    dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
 
 # Train the network.
 print("\nBegin training.\n")
@@ -362,8 +364,7 @@ for epoch in range(n_epochs):
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
-                    dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
+                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")

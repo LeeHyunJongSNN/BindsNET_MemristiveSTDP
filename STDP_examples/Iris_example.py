@@ -9,6 +9,7 @@ from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from bindsnet.encoding import PoissonEncoder
 from bindsnet.memstdp import RankOrderTTFSEncoder
@@ -38,24 +39,24 @@ plot = True
 train = True
 update_interval = 1
 progress_interval = 10
-intensity = 50
+intensity = 400
 time = 500
 dt = 1.0
 test_ratio = 1/3
 n_neurons = 16
-exc = 22.5
-inh = 120
-theta_plus = 0.02
+exc = 90
+inh = 480
+theta_plus = 0.005
 spare_gpu = 0
 seed = random.randint(0, 100)
 random_G = True
 vLTP = 0.0
-vLTD = 2.0
+vLTD = 0.0
 beta = 1.0
 dead_synapse = False
 dead_synapse_input_num = 2
 dead_synapse_exc_num = 2
-n_epochs = 3
+n_epochs = 1
 n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 n_workers = -1
 
@@ -92,6 +93,12 @@ if not train:
 iris = load_iris()
 iris_data = iris.data
 iris_label = iris.target
+standard_scaler = StandardScaler()
+minmax_scaler = MinMaxScaler()
+standard_scaler.fit(iris_data)
+iris_standard = standard_scaler.transform(iris_data)
+minmax_scaler.fit(iris_standard)
+iris_minmax = minmax_scaler.transform(iris_standard)
 
 encoder = PoissonEncoder(time=time, dt=dt)
 whole_data = []
@@ -99,12 +106,12 @@ classes = []
 
 # Preprocess iris data
 for i in range(150):
-    iris_converted = torch.tensor([intensity * float(x) for x in iris_data[i][0:len(iris_data[i])]])
+    iris_converted = torch.tensor([intensity * float(abs(x)) for x in iris_minmax[i][0:len(iris_minmax[i])]])
     encoded = encoder.enc(datum=iris_converted, time=time, dt=dt)
     whole_data.append({"encoded_image": encoded, "label": iris_label[i]})
     classes.append(iris_label[i])
 
-train_data, test_data, temp, temp1 = train_test_split(whole_data, whole_data, test_size=test_ratio)
+train_data, test_data = train_test_split(whole_data, test_size=test_ratio)
 
 n_classes = (np.unique(classes)).size
 
@@ -173,8 +180,10 @@ voltage_axes, voltage_ims = None, None
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
+dead_index_input = []
+for i in range(dead_synapse_exc_num):
+    dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
 
 # Train the network.
 print("\nBegin training.\n")
@@ -262,8 +271,7 @@ for epoch in range(n_epochs):
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
-                    dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
+                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")

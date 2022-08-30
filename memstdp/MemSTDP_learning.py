@@ -217,8 +217,6 @@ class MemristiveSTDP_Simplified(LearningRule):
         # Dead synapses variables
         dead_index_input = []
         dead_index_exc = []
-        dead_synapse_input_num = kwargs.get('dead_synapse_input_num')
-        dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
@@ -244,9 +242,9 @@ class MemristiveSTDP_Simplified(LearningRule):
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
 
-            for i in range(dead_synapse_input_num):
-                for l in range(dead_synapse_exc_num):
-                    self.connection.w[dead_index_input[i], dead_index_exc[l]] = 0
+            for i in range(len(dead_index_exc)):
+                for j in dead_index_input[i]:
+                    self.connection.w[j, dead_index_exc[i]] = 0
 
         # Weight update with memristive characteristc
         if vltp == 0 and vltd == 0:  # Fully linear update
@@ -569,8 +567,6 @@ class MemristiveSTDP(LearningRule):
         # Dead synapses variables
         dead_index_input = []
         dead_index_exc = []
-        dead_synapse_input_num = kwargs.get('dead_synapse_input_num')
-        dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
@@ -596,9 +592,9 @@ class MemristiveSTDP(LearningRule):
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
 
-            for i in range(dead_synapse_input_num):
-                for j in range(dead_synapse_exc_num):
-                    self.connection.w[dead_index_input[i], dead_index_exc[j]] = 0
+            for i in range(len(dead_index_exc)):
+                for j in dead_index_input[i]:
+                    self.connection.w[j, dead_index_exc[i]] = 0
 
         # Weight update with memristive characteristc
         if vltp == 0 and vltd == 0:  # Fully linear update
@@ -976,8 +972,6 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         # Dead synapses variables
         dead_index_input = []
         dead_index_exc = []
-        dead_synapse_input_num = kwargs.get('dead_synapse_input_num')
-        dead_synapse_exc_num = kwargs.get('dead_synapse_exc_num')
 
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
@@ -1003,9 +997,9 @@ class MemristiveSTDP_TimeProportion(LearningRule):
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
 
-            for i in range(dead_synapse_input_num):
-                for j in range(dead_synapse_exc_num):
-                    self.connection.w[dead_index_input[i], dead_index_exc[j]] = 0
+            for i in range(len(dead_index_exc)):
+                for j in dead_index_input[i]:
+                    self.connection.w[j, dead_index_exc[i]] = 0
 
         # Weight update with memristive characteristc
         if vltp == 0 and vltd == 0:  # Fully linear update

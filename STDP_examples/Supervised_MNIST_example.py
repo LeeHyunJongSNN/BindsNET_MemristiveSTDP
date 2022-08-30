@@ -168,8 +168,10 @@ voltage_ims = None
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-dead_index_input = random.sample(range(0, num_inputs), dead_synapse_input_num)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
+dead_index_input = []
+for i in range(dead_synapse_exc_num):
+    dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
 
 pbar = tqdm(total=n_train)
 for (i, datum) in enumerate(dataloader):
@@ -228,8 +230,7 @@ for (i, datum) in enumerate(dataloader):
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                 vLTP=vLTP, vLTD=vLTD, beta=beta,
-                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
-                dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
+                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
     # Get voltage recording.
     exc_voltages = exc_voltage_monitor.get("v")
