@@ -342,8 +342,6 @@ dead_index_input = []
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-# rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-# rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
 for i in range(dead_synapse_exc_num):
     dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
