@@ -287,7 +287,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                             self.connection.w[i, k.item()] -= (gmax[i, k.item()] - gmin[i, k.item()]) / 256
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[l])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[l]).view(
@@ -343,7 +343,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                             self.connection.w[i, k.item()] -= (gmax[i, k.item()] - gmin[i, k.item()]) / 256
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[l])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[l]).view(
@@ -398,7 +398,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                                 i, k.item()] - gmax[i, k.item()]) * (1 - np.exp(vltd / 256))
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[l])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[l]).view(
@@ -458,7 +458,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                                                 i, k.item()] - gmax[i, k.item()]) * (1 - np.exp(vltd / 256))
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[l])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[l]).view(
@@ -649,7 +649,7 @@ class MemristiveSTDP(LearningRule):
                                                                                    gmin[i, k.item()]) / 256
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
@@ -717,7 +717,7 @@ class MemristiveSTDP(LearningRule):
                                                                                    gmin[i, k.item()]) / 256
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
@@ -787,7 +787,7 @@ class MemristiveSTDP(LearningRule):
                                                                                                1 - np.exp(vltd / 256))
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
@@ -859,7 +859,7 @@ class MemristiveSTDP(LearningRule):
                                                                                            1 - np.exp(vltd / 256))
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
@@ -1074,7 +1074,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                                    gmin[i, k.item()]) / 256
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
@@ -1168,7 +1168,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                                    gmin[i, k.item()]) / 256
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
@@ -1263,7 +1263,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                                                1 - np.exp(vltd / 256))
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
@@ -1361,7 +1361,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                                            1 - np.exp(vltd / 256))
 
                     if time == simulation_time:
-                        for l in range(time - pulse_time_LTD, time + 1):
+                        for l in range(time - pulse_time_LTD, time):
                             if torch.numel(torch.nonzero(target_r[j])) != 0:
                                 Ae_time_LTD = l  # Latest update time of LTD
                                 Ae_index_LTD = torch.nonzero(target_r[j]).view(
