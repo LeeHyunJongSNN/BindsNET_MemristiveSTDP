@@ -194,7 +194,7 @@ class AdaptiveIFNodes(Nodes):
     ) -> None:
         # language=rst
         """
-        Instantiates a layer of Adaptive IF neurons.
+        Instantiates a layer of Adpative IF neurons.
 
         :param n: The number of neurons in the layer.
         :param shape: The dimensionality of the layer.

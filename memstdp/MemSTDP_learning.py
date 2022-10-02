@@ -1386,4 +1386,3 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                                                1 - np.exp(vltd / 256))
 
         super().update()
-

@@ -42,3 +42,32 @@ def rank_order_TTFS(
 
 
     return spikes.reshape(time, *shape)
+
+def linear_rate(datum: torch.Tensor, time: int, dt: float = 1.0, **kwargs) -> torch.Tensor:
+    # language=rst
+    """
+    :param datum: Repeats a tensor along a new dimension in the 0th position for
+        ``int(time / dt)`` timesteps.
+    :param time: Tensor of shape ``[n_1, ..., n_k]``.
+    :param dt: Simulation time step.
+    :return: Tensor of shape ``[time, n_1, ..., n_k]`` of repeated data along the 0-th
+        dimension.
+    """
+    time = int(time / dt)
+
+    shape, size = datum.shape, datum.numel()
+
+
+    converted = (10 * datum + 13).view(-1)
+    for i in range(len(converted)):
+        if converted[i].item() == 13:
+            converted[i] = 0
+
+    spikes = torch.zeros(time, size).byte()
+    for k in range(time):
+        for j in range(size):
+            if converted[j] != 0:
+                if k % (round(time / converted[j].item())) == 0:
+                    spikes[k, j] = 1
+
+    return spikes.reshape(time, *shape)
