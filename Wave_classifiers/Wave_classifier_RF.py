@@ -130,9 +130,6 @@ if n_workers == -1:
 
 print(n_workers, os.cpu_count() - 1)
 
-if not train:
-    update_interval = n_test
-
 n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 
 if enocder_type == "PoissonEncoder":
@@ -411,7 +408,7 @@ print("Training complete.\n")
 accuracy = {"all": 0, "proportion": 0}
 
 # Record spikes during the simulation.
-spike_record = torch.zeros((update_interval, int(time / dt), n_neurons), device=device)
+spike_record = torch.zeros((1, int(time / dt), n_neurons), device=device)
 
 # Train the network.
 print("\nBegin testing\n")
