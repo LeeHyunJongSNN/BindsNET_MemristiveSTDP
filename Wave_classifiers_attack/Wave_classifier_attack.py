@@ -43,14 +43,14 @@ parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=90)
 parser.add_argument("--inh", type=float, default=480)
-parser.add_argument("--theta_plus", type=float, default=0.0001)
+parser.add_argument("--theta_plus", type=float, default=0.0009)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
 parser.add_argument("--intensity", type=float, default=1650)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
-parser.add_argument("--test_ratio", type=float, default=0.95)
+parser.add_argument("--test_ratio", type=float, default=59/60)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
@@ -61,7 +61,7 @@ parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
 parser.add_argument("--attack_type", dest="attack_type", default="Wave")
 parser.add_argument("--attack_mean", type=float, default=0)
 parser.add_argument("--attack_stddev", type=float, default=1)
-parser.add_argument("--attack_intensity", type=float, default=2.0)
+parser.add_argument("--attack_intensity", type=float, default=1.0)
 parser.add_argument("--noise_intensity", type=float, default=1/64)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
@@ -174,8 +174,8 @@ processed_traindata = []
 attacked_testdata = []
 
 fname = " "
-for fname in ["D:/SNN_dataset/Wi-Fi_Preambles/"
-              "WIFI_10MHz_IQvector_18dB_20000.txt"]:
+for fname in ["/home/leehyunjong/Wi-Fi_Preambles/"
+              "WIFI_10MHz_IQvector_18dB_60000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -247,7 +247,7 @@ elif attack_type == "Wave":
         attack = 32 * [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
         attack = (np.array(attack) + attack_noise) * attack_intensity
         linedata_attacked = np.array(linedata_labelremoved) + attack
-        linedata_dcremoved = detrend(linedata_attacked - np.mean(linedata_attacked))    # removing DC offset
+        linedata_dcremoved = detrend(linedata_attacked - np.mean(linedata_attacked))  # removing DC offset
 
         linedata_fft_1 = np.fft.fft([x for x in linedata_dcremoved[16:80]]) / 64
         linedata_fft_2 = np.fft.fft([x for x in linedata_dcremoved[96:160]]) / 64
@@ -266,8 +266,8 @@ elif attack_type == "Wave":
 
 else:
     raise NotImplementedError(
-                "This attack type doesn't exist, please check the attack type."
-            )
+        "This attack type doesn't exist, please check the attack type."
+    )
 
 n_classes = (np.unique(wave_classes)).size
 
@@ -334,12 +334,14 @@ assigns_im = None
 hist_ax = None
 perf_ax = None
 voltage_axes, voltage_ims = None, None
-dead_index_input = []
 
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
+# rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+# rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
 dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
+dead_index_input = []
 for i in range(dead_synapse_exc_num):
     dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
 
@@ -498,8 +500,7 @@ for step, batch in enumerate(attacked_testdata):
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                 vLTP=vLTP, vLTD=vLTD, beta=beta,
-                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
-                dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
+                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
