@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
 from bindsnet.memstdp import RankOrderTTFSEncoder
 from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
-from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified
+from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified, MemristiveSTDP_TimeProportion
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
 from bindsnet.evaluation import (
@@ -45,7 +45,7 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.0009)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=12)
+parser.add_argument("--intensity", type=float, default=24)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=1)
@@ -61,8 +61,8 @@ parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
+parser.add_argument("--spare_gpu", dest="spare_gpu", default=1)
+parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
@@ -160,7 +160,7 @@ classes = []
 
 fname = " "
 for fname in ["/home/leehyunjong/Wi-Fi_Preambles/"
-              "160_Shifted_WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
+              "160_Shifted_WIFI_10MHz_IQvector_6dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -427,8 +427,7 @@ for step, batch in enumerate(test_data):
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                 vLTP=vLTP, vLTD=vLTD, beta=beta,
-                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
-                dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
+                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()

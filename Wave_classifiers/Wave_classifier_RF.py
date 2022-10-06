@@ -12,11 +12,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import minmax_scale
 from scipy.signal import detrend
 
-from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
-from bindsnet.memstdp import RankOrderTTFSEncoder
-from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
+from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, RepeatEncoder
+from bindsnet.memstdp import RankOrderTTFSEncoder, LinearRateEncoder
+from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP, KISTnetwork_MemSTDP
 from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified, MemristiveSTDP_TimeProportion
 from bindsnet.network.monitors import Monitor
+from bindsnet.learning.learning import PostPre
 from bindsnet.utils import get_square_assignments, get_square_weights
 from bindsnet.evaluation import (
     all_activity,
@@ -47,24 +48,24 @@ parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.003)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=200)
+parser.add_argument("--intensity", type=float, default=350)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
-parser.add_argument("--update_interval", type=int, default=1)
+parser.add_argument("--update_interval", type=int, default=10)
 parser.add_argument("--test_ratio", type=float, default=0.95)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
-parser.add_argument("--dead_synapse", type=bool, default=True)
-parser.add_argument("--dead_synapse_input_num", type=int, default=8)
-parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
+parser.add_argument("--dead_synapse", type=bool, default=False)
+parser.add_argument("--dead_synapse_input_num", type=int, default=2)
+parser.add_argument("--dead_synapse_exc_num", type=int, default=2)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
+parser.add_argument("--spare_gpu", dest="spare_gpu", default=1)
+parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
@@ -120,7 +121,7 @@ print("Running on Device =", device)
 print("Random Seed =", random_seed)
 print("Random G value =", random_G)
 print("vLTP =", vLTP)
-print("vLTP =", vLTD)
+print("vLTD =", vLTD)
 print("beta =", beta)
 print("dead synapse =", dead_synapse)
 
@@ -144,8 +145,8 @@ elif enocder_type == "RankOrderTTFSEncoder":
 elif enocder_type == "BernoulliEncoder":
     encoder = BernoulliEncoder(time=time, dt=dt)
 
-elif enocder_type == "SingleEncoder":
-    encoder = SingleEncoder(time=time, dt=dt)
+elif enocder_type == "LinearRateEncoder":
+    encoder = LinearRateEncoder(time=time, dt=dt)
 
 elif enocder_type == "RepeatEncoder":
     encoder = RepeatEncoder(time=time, dt=dt)
@@ -160,38 +161,31 @@ wave_data = []
 classes = []
 
 fname = " "
-for fname in ["D:/SNN_dataset/Simple_Waves_RF/"
-              "(sine+square)_1kHz_10_amplitude_0dB_20000.txt"]:
+for fname in ["/home/leehyunjong/Dataset_2.4GHz/1kHz_10/vector/"
+              "(sine+sawtooth)_1kHz_10_vector_18dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
+    n_attack = 0
+    n_benign = 0
     linedata = []
 
     for line in f:
         if line[0] == "#":
             continue
 
-        linedata = [float(x) for x in line.split()]
+        linedata = [complex(x) for x in line.split()]
         if len(linedata) == 0:
             continue
 
-        linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
-        # linedata_dcremoved = detrend(linedata_labelremoved - np.mean(linedata_labelremoved))     # removing DC offset
+        linedata_labelremoved = [abs(x) for x in linedata[0:len(linedata) - 1]]
 
-        # linedata_fft = (np.fft.fft(linedata_dcremoved) / len(linedata_dcremoved))
-        # linedata_normalized = minmax_scale(np.abs(linedata_fft)).tolist()
-        # linedata_intensity = [intensity * round(float(x), 10)
-        #                       for x in linedata_normalized[0:len(linedata_normalized)]]
+        # linedata_normalized = minmax_scale(linedata_labelremoved).tolist()
+        # linedata_intensity = [intensity * x for x in linedata_normalized[0:len(linedata_normalized)]]
 
-        # linedata_normalized = minmax_scale(linedata_dcremoved).tolist()
-        # linedata_intensity = [intensity * round(x, 10) for x in linedata_normalized[0:len(linedata_normalized)]]
+        linedata_intensity = [intensity * x for x in linedata_labelremoved[0:len(linedata_labelremoved)]]
 
-        linedata_normalized = minmax_scale(linedata_labelremoved).tolist()
-        linedata_intensity = [intensity * x for x in linedata_normalized[0:len(linedata_normalized)]]
-
-        # linedata_intensity = [intensity * x for x in linedata_labelremoved[0:len(linedata_labelremoved)]]
-
-        cl = int(linedata[-1])
+        cl = complex(linedata[-1])
         classes.append(cl)
         lbl = torch.tensor([cl])
 
@@ -218,7 +212,7 @@ network = DiehlAndCook2015_MemSTDP(
     n_neurons=n_neurons,
     exc=exc,
     inh=inh,
-    update_rule=MemristiveSTDP,
+    update_rule=MemristiveSTDP_TimeProportion,
     dt=dt,
     norm=1.0,
     theta_plus=theta_plus,
@@ -378,7 +372,7 @@ for epoch in range(n_epochs):
             inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, num_inputs)
             input_exc_weights = network.connections[("X", "Ae")].w
             square_weights = get_square_weights(
-               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, (1, num_inputs)
+                input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, (1, num_inputs)
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
@@ -431,8 +425,7 @@ for step, batch in enumerate(test_data):
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                 vLTP=vLTP, vLTD=vLTD, beta=beta,
-                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
-                dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
+                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
