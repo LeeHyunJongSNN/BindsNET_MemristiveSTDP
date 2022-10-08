@@ -1444,95 +1444,84 @@ class MemristiveSTDP_Binary(LearningRule):
                 for j in dead_index_input[i]:
                     self.connection.w[j, dead_index_exc[i]] = 0
 
-        # Weight update with memristive characteristc
-        if torch.numel(update_index_and_time) == 0:
-            self.connection.w = self.connection.w
+                # Weight update with memristive characteristc
+            if torch.numel(update_index_and_time) == 0:
+                self.connection.w = self.connection.w
 
-        elif torch.numel(update_index_and_time) != 0:
-            if torch.numel(torch.nonzero(target_s)) != 0:
-                Ae_time_LTP = time  # Latest update time
-                Ae_index_LTP = torch.nonzero(target_s).view(-1)  # Latest update nueron index
-            if Ae_time_LTP < pulse_time_LTP:
-                if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
-                    X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(
-                        -1)  # LTP causing spikes
-                    for i in range(X_size):
-                        if i in X_cause_index:
-                            X_cause_time = torch.nonzero(
-                                source_r[0:Ae_time_LTP, i]).reshape(-1) # LTP causing spikes time
-                            X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
-                            for k in Ae_index_LTP:
-                                for j in range(X_cause_count):
-                                    t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
-                                    if t < 0.5:
-                                        self.connection.w[i, k.item()] = 0
-                                    else:
-                                        self.connection.w[i, k.item()] = 1
+            elif torch.numel(update_index_and_time) != 0:
+                if torch.numel(torch.nonzero(target_s)) != 0:
+                    Ae_time_LTP = time  # Latest update time
+                    Ae_index_LTP = torch.nonzero(target_s).view(-1)  # Latest update nueron index
+                if Ae_time_LTP < pulse_time_LTP:
+                    if torch.sum(source_r[0:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[0:Ae_time_LTP])[:, [1]].view(
+                            -1)  # LTP causing spikes
+                        for i in range(X_size):
+                            if i in X_cause_index:
+                                X_cause_time = torch.nonzero(
+                                    source_r[0:Ae_time_LTP, i]).reshape(-1)  # LTP causing spikes time
+                                X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
+                                for k in Ae_index_LTP:
+                                    for j in range(X_cause_count):
+                                        t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                        self.connection.w[i, k.item()] += t
 
-            elif Ae_time_LTP >= pulse_time_LTP:
-                if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
-                    X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:,
-                                    [1]].view(
-                        -1)  # LTP causing spikes
-                    for i in range(X_size):
-                        if i in X_cause_index:
-                            X_cause_time = torch.nonzero(
-                                source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP, i]).reshape(
-                                -1) # LTP causing spikes time
-                            X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
-                            for k in Ae_index_LTP:
-                                for j in range(X_cause_count):
-                                    t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
-                                    if t < 0.5:
-                                        self.connection.w[i, k.item()] = 0
-                                    else:
-                                        self.connection.w[i, k.item()] = 1
 
-                if time - pulse_time_LTD > 0:
-                    if torch.numel(
-                            torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
-                        Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
-                        Ae_index_LTD = torch.nonzero(
-                            target_r[Ae_time_LTD])  # Latest update nueron index of LTD
-                        if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
-                            X_cause_index = torch.nonzero(
-                                source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
-                                -1)  # LTD causing spikes
-                            for i in range(X_size):
-                                if i in X_cause_index:
-                                    X_cause_time = torch.nonzero(
-                                        source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD, i]).reshape(
-                                        -1)  # LTP causing spikes time
-                                    X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
-                                    for k in Ae_index_LTD:
-                                        for j in range(X_cause_count):
-                                            t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
-                                            if t < 0.5:
-                                                self.connection.w[i, k.item()] = 1
-                                            else:
-                                                self.connection.w[i, k.item()] = 0
+                elif Ae_time_LTP >= pulse_time_LTP:
+                    if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
+                        X_cause_index = torch.nonzero(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP])[:,
+                                        [1]].view(
+                            -1)  # LTP causing spikes
+                        for i in range(X_size):
+                            if i in X_cause_index:
+                                X_cause_time = torch.nonzero(
+                                    source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP, i]).reshape(
+                                    -1)  # LTP causing spikes time
+                                X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
+                                for k in Ae_index_LTP:
+                                    for j in range(X_cause_count):
+                                        t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                        self.connection.w[i, k.item()] += t
 
-                if time == simulation_time:
-                    for l in range(time - pulse_time_LTD, time):
-                        if torch.numel(torch.nonzero(target_r[j])) != 0:
-                            Ae_time_LTD = l  # Latest update time of LTD
-                            Ae_index_LTD = torch.nonzero(target_r[j]).view(
-                                -1)  # Latest update nueron index of LTD
-                            if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
-                                X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
+                    if time - pulse_time_LTD > 0:
+                        if torch.numel(
+                                torch.nonzero(target_r[time - pulse_time_LTD])) != 0:  # Checking LTD spike time
+                            Ae_time_LTD = time - pulse_time_LTD  # Latest update time of LTD
+                            Ae_index_LTD = torch.nonzero(
+                                target_r[Ae_time_LTD])  # Latest update nueron index of LTD
+                            if torch.sum(source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD]) > 0:  # LTD
+                                X_cause_index = torch.nonzero(
+                                    source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD])[:, [1]].view(
                                     -1)  # LTD causing spikes
                                 for i in range(X_size):
                                     if i in X_cause_index:
                                         X_cause_time = torch.nonzero(
-                                            source_r[Ae_time_LTD:time, i]).reshape(-1)  # LTP causing spikes time
+                                            source_r[Ae_time_LTD:Ae_time_LTD + pulse_time_LTD, i]).reshape(
+                                            -1)  # LTP causing spikes time
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
                                                 t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
-                                                if t < 0.5:
-                                                    self.connection.w[i, k.item()] = 1
-                                                else:
-                                                    self.connection.w[i, k.item()] = 0
+                                                self.connection.w[i, k.item()] -= t
+
+                    if time == simulation_time:
+                        for l in range(time - pulse_time_LTD, time):
+                            if torch.numel(torch.nonzero(target_r[j])) != 0:
+                                Ae_time_LTD = l  # Latest update time of LTD
+                                Ae_index_LTD = torch.nonzero(target_r[j]).view(
+                                    -1)  # Latest update nueron index of LTD
+                                if torch.sum(source_r[Ae_time_LTD:time]) > 0:  # LTD
+                                    X_cause_index = torch.nonzero(source_r[Ae_time_LTD:time])[:, [1]].view(
+                                        -1)  # LTD causing spikes
+                                    for i in range(X_size):
+                                        if i in X_cause_index:
+                                            X_cause_time = torch.nonzero(
+                                                source_r[Ae_time_LTD:time, i]).reshape(-1)  # LTP causing spikes time
+                                            X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
+                                            for k in Ae_index_LTD:
+                                                for j in range(X_cause_count):
+                                                    t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                                    self.connection.w[i, k.item()] -= t
 
         super().update()
 
