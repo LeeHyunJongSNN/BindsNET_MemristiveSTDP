@@ -29,6 +29,9 @@ class DiehlAndCook2015_MemSTDP(Network):
         exc: float = 22.5,
         inh: float = 17.5,
         dt: float = 1.0,
+        rest: float = -65.0,
+        reset: float = -60.0,
+        thresh: float = -52.0,
         update_rule: Optional = None,
         nu: Optional[Union[float, Sequence[float]]] = (1e-4, 1e-2),
         reduction: Optional[callable] = None,
@@ -70,6 +73,9 @@ class DiehlAndCook2015_MemSTDP(Network):
         self.exc = exc
         self.inh = inh
         self.dt = dt
+        self.rest = rest
+        self.reset = reset
+        self.thresh = thresh
         self.update_rule = update_rule
 
         # Layers
@@ -81,9 +87,9 @@ class DiehlAndCook2015_MemSTDP(Network):
             traces=True,
             traces_additive=True,
             sum_input=True,
-            rest=-65.0, # -65.0
-            reset=-60.0, # -60.0
-            thresh=-58.0, # -52.0
+            rest=rest,
+            reset=reset,
+            thresh=thresh,
             refrac=5,
             tc_decay=100.0,
             tc_trace=20.0,
@@ -93,9 +99,9 @@ class DiehlAndCook2015_MemSTDP(Network):
         inh_layer = LIFNodes(
             n=self.n_neurons,
             traces=False,
-            rest=-60.0, # -60.0
-            reset=-45.0, # -45.0
-            thresh=-40.0, # -40.0
+            rest=-60.0,
+            reset=-45.0,
+            thresh=-40.0,
             tc_decay=10.0,
             refrac=2,
             tc_trace=20.0,
@@ -147,6 +153,8 @@ class AdaptiveIFNetwork_MemSTDP(Network):
         exc: float = 22.5,
         inh: float = 17.5,
         dt: float = 1.0,
+        reset: float = -60.0,
+        thresh: float = -52.0,
         update_rule: Optional = None,
         nu: Optional[Union[float, Sequence[float]]] = (1e-4, 1e-2),
         reduction: Optional[callable] = None,
@@ -200,8 +208,8 @@ class AdaptiveIFNetwork_MemSTDP(Network):
             traces=True,
             traces_additive=True,
             sum_input=True,
-            reset=-60.0,
-            thresh=-54.0,
+            reset=reset,
+            thresh=thresh,
             theta_plus=theta_plus,
             tc_theta_decay=tc_theta_decay,
             refrac=5,
@@ -276,6 +284,9 @@ class KISTnetwork_MemSTDP(Network):
         exc: float = 22.5,
         inh: float = 17.5,
         dt: float = 1.0,
+        rest: float = 0.0,
+        reset: float = 1.5,
+        thresh: float = 2.1,
         update_rule: Optional = None,
         nu: Optional[Union[float, Sequence[float]]] = (1e-4, 1e-2),
         reduction: Optional[callable] = None,
@@ -324,9 +335,9 @@ class KISTnetwork_MemSTDP(Network):
             n=self.n_neurons,
             traces=True,
             sum_input=True,
-            rest=0.0,
-            reset=1.5,
-            thresh=2.1,
+            rest=rest,
+            reset=reset,
+            thresh=thresh,
             refrac=5,
             tc_decay=100.0,
             tc_trace=20.0,
