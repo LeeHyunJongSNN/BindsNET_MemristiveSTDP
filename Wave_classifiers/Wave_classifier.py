@@ -41,16 +41,19 @@ parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
-parser.add_argument("--exc", type=float, default=90)
-parser.add_argument("--inh", type=float, default=480)
+parser.add_argument("--exc", type=float, default=22.5)
+parser.add_argument("--inh", type=float, default=17.5)
+parser.add_argument("--rest", type=float, default=-65.0)
+parser.add_argument("--reset", type=float, default=-60.0)
+parser.add_argument("--thresh", type=float, default=-52.0)
 parser.add_argument("--theta_plus", type=float, default=0.0001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=1650)
+parser.add_argument("--intensity", type=float, default=2400)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=59/60)
+parser.add_argument("--test_ratio", type=float, default=0.95)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
@@ -75,6 +78,9 @@ n_train = args.n_train
 n_workers = args.n_workers
 exc = args.exc
 inh = args.inh
+rest = args.rest
+reset = args.reset
+thresh = args.thresh
 theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
@@ -216,6 +222,9 @@ network = DiehlAndCook2015_MemSTDP(
     n_neurons=n_neurons,
     exc=exc,
     inh=inh,
+    rest=rest,
+    reset=reset,
+    thresh=thresh,
     update_rule=MemristiveSTDP_TimeProportion,
     dt=dt,
     norm=1.0,
