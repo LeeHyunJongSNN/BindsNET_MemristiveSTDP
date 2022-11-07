@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, RepeatEncoder
 from bindsnet.memstdp import RankOrderTTFSEncoder, LinearRateEncoder
 from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP, KISTnetwork_MemSTDP
-from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP_Binary
+from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP_KIST, MemristiveSTDP_TimeProportion
 from bindsnet.network.monitors import Monitor
 from bindsnet.learning.learning import PostPre
 from bindsnet.utils import get_square_assignments, get_square_weights
@@ -36,13 +36,16 @@ random_seed = random.randint(0, 100)
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=random_seed)
-parser.add_argument("--n_neurons", type=int, default=4)
+parser.add_argument("--n_neurons", type=int, default=3)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
-parser.add_argument("--exc", type=float, default=90)
-parser.add_argument("--inh", type=float, default=480)
+parser.add_argument("--exc", type=float, default=22.5)
+parser.add_argument("--inh", type=float, default=17.5)
+parser.add_argument("--rest", type=float, default=0.0)
+parser.add_argument("--reset", type=float, default=1.5)
+parser.add_argument("--thresh", type=float, default=2.1)
 parser.add_argument("--theta_plus", type=float, default=0.0)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
@@ -62,7 +65,7 @@ parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.add_argument("--spare_gpu", dest="spare_gpu", default=1)
+parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
 parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
 
 args = parser.parse_args()
@@ -75,6 +78,9 @@ n_train = args.n_train
 n_workers = args.n_workers
 exc = args.exc
 inh = args.inh
+rest = args.rest
+reset = args.reset
+thresh = args.thresh
 theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
@@ -160,7 +166,7 @@ classes = []
 
 fname = " "
 
-for fname in ["/home/leehyunjong/Dataset_Simple/4c2pattern_2.txt"]:
+for fname in ["/home/leehyunjong/Dataset_Simple/square+sawtooth_5.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -189,7 +195,7 @@ for fname in ["/home/leehyunjong/Dataset_Simple/4c2pattern_2.txt"]:
 
     f.close()
 
-train_data, test_data = train_test_split(wave_data, test_size=test_ratio)
+train_data, test_data = train_test_split(wave_data, test_size=test_ratio, shuffle=False)
 
 n_classes = (np.unique(classes)).size
 
@@ -206,7 +212,10 @@ network = KISTnetwork_MemSTDP(
     n_neurons=n_neurons,
     exc=exc,
     inh=inh,
-    update_rule=MemristiveSTDP_Binary,
+    rest=rest,
+    reset=reset,
+    thresh=thresh,
+    update_rule=MemristiveSTDP_KIST,
     dt=dt,
     norm=1.0,
     theta_plus=theta_plus,
@@ -391,6 +400,8 @@ for epoch in range(n_epochs):
 
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Training complete.\n")
+
+np.savetxt('weights_qt_5.txt', np.round(network.connections[("X", "Ae")].w.cpu().detach().numpy(), 2), fmt='%2f', delimiter=' ')
 
 # Sequence of accuracy estimates.
 accuracy = {"all": 0, "proportion": 0}

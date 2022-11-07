@@ -51,7 +51,7 @@ parser.add_argument("--thresh", type=float, default=-58.0)
 parser.add_argument("--theta_plus", type=float, default=0.003)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=180)
+parser.add_argument("--intensity", type=float, default=350)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
@@ -67,8 +67,8 @@ parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.add_argument("--spare_gpu", dest="spare_gpu", default=1)
-parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
+parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
+parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
@@ -168,7 +168,7 @@ classes = []
 
 fname = " "
 for fname in ["/home/leehyunjong/Dataset_2.4GHz/1kHz_10(noise)/"
-              "(sawtooth+noise)_1kHz_10_amplitude_6dB_20000.txt"]:
+              "(sine+noise)_1kHz_10_amplitude_0dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')

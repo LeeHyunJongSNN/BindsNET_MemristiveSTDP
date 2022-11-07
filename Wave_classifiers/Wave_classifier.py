@@ -46,10 +46,10 @@ parser.add_argument("--inh", type=float, default=17.5)
 parser.add_argument("--rest", type=float, default=-65.0)
 parser.add_argument("--reset", type=float, default=-60.0)
 parser.add_argument("--thresh", type=float, default=-52.0)
-parser.add_argument("--theta_plus", type=float, default=0.0001)
+parser.add_argument("--theta_plus", type=float, default=0.0005)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=2400)
+parser.add_argument("--intensity", type=float, default=800)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
@@ -167,7 +167,7 @@ classes = []
 
 fname = " "
 for fname in ["/home/leehyunjong/Wi-Fi_Preambles/"
-              "WIFI_10MHz_IQvector_18dB_60000.txt"]:
+              "WIFI_10MHz_IQvector_(minus)6dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
