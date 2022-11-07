@@ -957,7 +957,6 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         time = len(source_r)
         pulse_time_LTP = 50  # Change this factcor when you want to change LTP time slot
         pulse_time_LTD = 50  # Change this factcor when you want to change LTD time slot
-        range_scaling = 50  # Change this factcor when you want to set weight change
 
         # STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
@@ -1021,7 +1020,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                 X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
-                                        t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                        t = pulse_time_LTP / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                         self.connection.w[i, k.item()] += t * b * (gmax[i, k.item()] -
                                                                                    gmin[i, k.item()]) / 256
 
@@ -1038,7 +1037,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                 X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
-                                        t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                        t = pulse_time_LTP / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                         self.connection.w[i, k.item()] += t * b * (gmax[i, k.item()] -
                                                                                gmin[i, k.item()]) / 256
 
@@ -1060,7 +1059,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
-                                                t = range_scaling / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
                                                 self.connection.w[i, k.item()] -= t * (gmax[i, k.item()] -
                                                                                    gmin[i, k.item()]) / 256
 
@@ -1080,7 +1079,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                             for k in Ae_index_LTD:
                                                 for j in range(X_cause_count):
-                                                    t = range_scaling / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                    t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
                                                     self.connection.w[i, k.item()] -= t * (gmax[i, k.item()] -
                                                                                        gmin[i, k.item()]) / 256
 
@@ -1103,7 +1102,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                 X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
-                                        t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                        t = pulse_time_LTP / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                         self.connection.w[i, k.item()] += t * (-self.connection.w[i, k.item()] + g1ltp[
                                             i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
@@ -1120,7 +1119,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                 X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
-                                        t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                        t = pulse_time_LTP / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                         self.connection.w[i, k.item()] += t * (-self.connection.w[i, k.item()] + g1ltp[
                                             i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
@@ -1142,7 +1141,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
-                                                t = range_scaling / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
                                                 self.connection.w[i, k.item()] -= t * (gmax[i, k.item()] -
                                                                                    gmin[i, k.item()]) / 256
 
@@ -1162,7 +1161,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                             for k in Ae_index_LTD:
                                                 for j in range(X_cause_count):
-                                                    t = range_scaling / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                    t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
                                                     self.connection.w[i, k.item()] -= t * (gmax[i, k.item()] -
                                                                                        gmin[i, k.item()]) / 256
 
@@ -1185,7 +1184,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                 X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
-                                        t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                        t = pulse_time_LTP / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                         self.connection.w[i, k.item()] += t * b * (gmax[i, k.item()] -
                                                                                gmin[i, k.item()]) / 256
 
@@ -1201,7 +1200,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                             for k in Ae_index_LTP:
                                 for j in range(X_cause_count):
-                                    t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                    t = pulse_time_LTP / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                     self.connection.w[i, k.item()] += t * b * (gmax[i, k.item()] -
                                                                                gmin[i, k.item()]) / 256
 
@@ -1223,7 +1222,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
-                                                t = range_scaling / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
                                                 self.connection.w[i, k.item()] -= t * (self.connection.w[i, k.item()] +
                                                                                     g1ltd[i, k.item()] - gmax[
                                                                                         i, k.item()]) * (
@@ -1245,7 +1244,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                             for k in Ae_index_LTD:
                                                 for j in range(X_cause_count):
-                                                    t = range_scaling / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                    t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
                                                     self.connection.w[i, k.item()] -= t * (self.connection.w[i, k.item()] +
                                                                                         g1ltd[i, k.item()] - gmax[
                                                                                             i, k.item()]) * (
@@ -1270,7 +1269,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                 X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
-                                        t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                        t = pulse_time_LTP / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                         self.connection.w[i, k.item()] += t * (-self.connection.w[i, k.item()] + g1ltp[
                                             i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
@@ -1287,7 +1286,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                 X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                 for k in Ae_index_LTP:
                                     for j in range(X_cause_count):
-                                        t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
+                                        t = pulse_time_LTP / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                         self.connection.w[i, k.item()] += t * (-self.connection.w[i, k.item()] + g1ltp[
                                             i, k.item()] + gmin[i, k.item()]) * (1 - np.exp(-vltp * b / 256))
 
@@ -1309,7 +1308,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
-                                                t = range_scaling / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
                                                 self.connection.w[i, k.item()] -= t * (self.connection.w[i, k.item()] +
                                                                                     g1ltd[i, k.item()] - gmax[
                                                                                         i, k.item()]) * (
@@ -1331,7 +1330,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                             for k in Ae_index_LTD:
                                                 for j in range(X_cause_count):
-                                                    t = range_scaling / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                    t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
                                                     self.connection.w[i, k.item()] -= t * (self.connection.w[i, k.item()] +
                                                                                         g1ltd[i, k.item()] - gmax[
                                                                                             i, k.item()]) * (
@@ -1416,9 +1415,9 @@ class MemristiveSTDP_KIST(LearningRule):
 
         # Time variables
         time = len(source_r)
+        ref_t = 22
         pulse_time_LTP = 50  # Change this factcor when you want to change LTP time slot
         pulse_time_LTD = 50  # Change this factcor when you want to change LTD time slot
-        range_scaling = 50  # Change this factcor when you want to set weight change
 
         # STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
@@ -1433,7 +1432,6 @@ class MemristiveSTDP_KIST(LearningRule):
         # Dead synapses variables
         dead_index_input = []
         dead_index_exc = []
-
         dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
 
         # Dead synpase simulation
@@ -1464,8 +1462,12 @@ class MemristiveSTDP_KIST(LearningRule):
                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                             for k in Ae_index_LTP:
                                 for j in range(X_cause_count):
-                                    t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
-                                    self.connection.w[i, k.item()] += t
+                                    t = abs(Ae_time_LTP - X_cause_time[j])
+                                    if (t <= ref_t):
+                                        if (self.connection.w[i, k.item()] == 1):
+                                            continue
+                                        else:
+                                            self.connection.w[i, k.item()] += 1
 
 
             elif Ae_time_LTP >= pulse_time_LTP:
@@ -1481,8 +1483,12 @@ class MemristiveSTDP_KIST(LearningRule):
                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                             for k in Ae_index_LTP:
                                 for j in range(X_cause_count):
-                                    t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
-                                    self.connection.w[i, k.item()] += t
+                                    t = abs(Ae_time_LTP - X_cause_time[j])
+                                    if (t <= ref_t):
+                                        if (self.connection.w[i, k.item()] == 1):
+                                            continue
+                                        else:
+                                            self.connection.w[i, k.item()] += 1
 
 
                 if time - pulse_time_LTD > 0:
@@ -1503,8 +1509,12 @@ class MemristiveSTDP_KIST(LearningRule):
                                     X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                     for k in Ae_index_LTD:
                                         for j in range(X_cause_count):
-                                            t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
-                                            self.connection.w[i, k.item()] -=t
+                                            t = abs(Ae_time_LTP - X_cause_time[j])
+                                            if (t <= ref_t):
+                                                if (self.connection.w[i, k.item()] == 0):
+                                                    continue
+                                                else:
+                                                    self.connection.w[i, k.item()] -= 1
 
 
                 if time == simulation_time:
@@ -1523,8 +1533,12 @@ class MemristiveSTDP_KIST(LearningRule):
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
-                                                t = range_scaling / abs(Ae_time_LTP - X_cause_time[j] + 1)
-                                                self.connection.w[i, k.item()] -= t
+                                                t = abs(Ae_time_LTP - X_cause_time[j])
+                                                if (t <= ref_t):
+                                                    if (self.connection.w[i, k.item()] == 0):
+                                                        continue
+                                                    else:
+                                                        self.connection.w[i, k.item()] -= 1
 
 
         super().update()
