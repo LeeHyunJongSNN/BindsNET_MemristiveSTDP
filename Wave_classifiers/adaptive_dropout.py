@@ -203,6 +203,7 @@ if adaptive_dropout:
         dropout_index.append(np.argwhere(pre_average[j] <= np.sort(pre_average[j])[0:dropout_num][-1]).flatten().tolist())
 
 dropout_index *= int(n_neurons / n_classes)
+dropout_exc = np.arange(n_neurons).tolist()
 
 print(n_train, n_test, n_classes)
 
@@ -356,7 +357,7 @@ for epoch in range(n_epochs):
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_synapse=adaptive_dropout, dead_index_input=dropout_index, dead_index_exc=np.arange(n_neurons).tolist())
+                    dead_synapse=adaptive_dropout, dead_index_input=dropout_index, dead_index_exc=dropout_exc)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -424,7 +425,7 @@ for step, batch in enumerate(test_data):
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                 vLTP=vLTP, vLTD=vLTD, beta=beta,
-                dead_synapse=adaptive_dropout, dead_index_input=dropout_index, dead_index_exc=np.arange(n_neurons).tolist())
+                dead_synapse=adaptive_dropout, dead_index_input=dropout_index, dead_index_exc=dropout_exc)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
