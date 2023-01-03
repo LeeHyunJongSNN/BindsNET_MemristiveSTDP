@@ -195,10 +195,11 @@ n_train = len(train_data)
 n_test = len(test_data)
 
 num_inputs = train_data[-1]["encoded_image"].shape[1]
+pre_size = int(np.shape(preprocessed)[0] / n_classes)
 
 if adaptive_dropout:
     for j in range(n_classes):
-        pre_average.append(np.mean(preprocessed[j * 10000:(j + 1) * 10000], axis=0))
+        pre_average.append(np.mean(preprocessed[j * pre_size:(j + 1) * pre_size], axis=0))
         dropout_index.append(np.argwhere(pre_average[j] <= np.sort(pre_average[j])[0:dropout_num][-1]).flatten().tolist())
 
 dropout_index *= int(n_neurons / n_classes)
