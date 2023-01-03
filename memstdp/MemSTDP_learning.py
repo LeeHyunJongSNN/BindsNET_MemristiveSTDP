@@ -230,7 +230,7 @@ class MemristiveSTDP_Simplified(LearningRule):
         dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
-        if grand == True:
+        if grand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
 
@@ -238,7 +238,7 @@ class MemristiveSTDP_Simplified(LearningRule):
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
         # Dead synpase simulation
-        if dead_synapses == True:
+        if dead_synapses:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
 
@@ -552,8 +552,8 @@ class MemristiveSTDP(LearningRule):
 
         # Time variables
         time = len(source_r)
-        pulse_time_LTP = 45  # Change this factcor when you want to change LTP time slot
-        pulse_time_LTD = 45  # Change this factcor when you want to change LTD time slot
+        pulse_time_LTP = 50  # Change this factcor when you want to change LTP time slot
+        pulse_time_LTD = 50  # Change this factcor when you want to change LTD time slot
 
         # STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
@@ -580,7 +580,7 @@ class MemristiveSTDP(LearningRule):
         dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
-        if grand == True:
+        if grand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
 
@@ -588,7 +588,7 @@ class MemristiveSTDP(LearningRule):
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
         # Dead synpase simulation
-        if dead_synapses == True:
+        if dead_synapses:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
 
@@ -984,7 +984,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
-        if grand == True:
+        if grand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
 
@@ -992,7 +992,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
         # Dead synpase simulation
-        if dead_synapses == True:
+        if dead_synapses:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
 
@@ -1059,7 +1059,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
-                                                t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                t = pulse_time_LTD / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                                 self.connection.w[i, k.item()] -= t * (gmax[i, k.item()] -
                                                                                    gmin[i, k.item()]) / 256
 
@@ -1079,7 +1079,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                             for k in Ae_index_LTD:
                                                 for j in range(X_cause_count):
-                                                    t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                    t = pulse_time_LTD / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                                     self.connection.w[i, k.item()] -= t * (gmax[i, k.item()] -
                                                                                        gmin[i, k.item()]) / 256
 
@@ -1141,7 +1141,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
-                                                t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                t = pulse_time_LTD / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                                 self.connection.w[i, k.item()] -= t * (gmax[i, k.item()] -
                                                                                    gmin[i, k.item()]) / 256
 
@@ -1161,7 +1161,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                             for k in Ae_index_LTD:
                                                 for j in range(X_cause_count):
-                                                    t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                    t = pulse_time_LTD / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                                     self.connection.w[i, k.item()] -= t * (gmax[i, k.item()] -
                                                                                        gmin[i, k.item()]) / 256
 
@@ -1222,7 +1222,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
-                                                t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                t = pulse_time_LTD / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                                 self.connection.w[i, k.item()] -= t * (self.connection.w[i, k.item()] +
                                                                                     g1ltd[i, k.item()] - gmax[
                                                                                         i, k.item()]) * (
@@ -1244,7 +1244,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                             for k in Ae_index_LTD:
                                                 for j in range(X_cause_count):
-                                                    t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                    t = pulse_time_LTD / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                                     self.connection.w[i, k.item()] -= t * (self.connection.w[i, k.item()] +
                                                                                         g1ltd[i, k.item()] - gmax[
                                                                                             i, k.item()]) * (
@@ -1308,7 +1308,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                         X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                         for k in Ae_index_LTD:
                                             for j in range(X_cause_count):
-                                                t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                t = pulse_time_LTD / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                                 self.connection.w[i, k.item()] -= t * (self.connection.w[i, k.item()] +
                                                                                     g1ltd[i, k.item()] - gmax[
                                                                                         i, k.item()]) * (
@@ -1330,7 +1330,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                                             for k in Ae_index_LTD:
                                                 for j in range(X_cause_count):
-                                                    t = pulse_time_LTD / abs(Ae_time_LTD - X_cause_time[j] + 1)
+                                                    t = pulse_time_LTD / abs(Ae_time_LTP - X_cause_time[j] + 1)
                                                     self.connection.w[i, k.item()] -= t * (self.connection.w[i, k.item()] +
                                                                                         g1ltd[i, k.item()] - gmax[
                                                                                             i, k.item()]) * (
@@ -1339,7 +1339,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         super().update()
 
 
-class MemristiveSTDP_KIST(LearningRule):
+class MemristiveSTDP_Binary(LearningRule):
     # language=rst
     """
     This rule is STDP with memristive characteristic.
@@ -1347,7 +1347,6 @@ class MemristiveSTDP_KIST(LearningRule):
     By default, pre-synaptic update is LTD and the post-synaptic update is LTP.
     In addtion, it updates the weight according to the time range between pre-synaptic and post-synaptic spikes.
     Input neurons' spiking proportion affects synaptic weight regulation.
-    Also it is implified for KIST device.
     """
 
     def __init__(
@@ -1415,9 +1414,8 @@ class MemristiveSTDP_KIST(LearningRule):
 
         # Time variables
         time = len(source_r)
-        ref_t = 22
-        pulse_time_LTP = 50  # Change this factcor when you want to change LTP time slot
-        pulse_time_LTD = 50  # Change this factcor when you want to change LTD time slot
+        pulse_time_LTP = 500  # Change this factcor when you want to change LTP time slot
+        pulse_time_LTD = 500  # Change this factcor when you want to change LTD time slot
 
         # STDP time record variables
         update_index_and_time = torch.nonzero(target_r)
@@ -1432,10 +1430,11 @@ class MemristiveSTDP_KIST(LearningRule):
         # Dead synapses variables
         dead_index_input = []
         dead_index_exc = []
+
         dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
 
         # Dead synpase simulation
-        if dead_synapses == True:
+        if dead_synapses:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
 
@@ -1458,7 +1457,7 @@ class MemristiveSTDP_KIST(LearningRule):
                     for i in range(X_size):
                         if i in X_cause_index:
                             X_cause_time = torch.nonzero(
-                                source_r[0:Ae_time_LTP, i]).reshape(-1) # LTP causing spikes time
+                                source_r[0:Ae_time_LTP, i]).reshape(-1)  # LTP causing spikes time
                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                             for k in Ae_index_LTP:
                                 for j in range(X_cause_count):
@@ -1479,7 +1478,7 @@ class MemristiveSTDP_KIST(LearningRule):
                         if i in X_cause_index:
                             X_cause_time = torch.nonzero(
                                 source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP, i]).reshape(
-                                -1) # LTP causing spikes time
+                                -1)  # LTP causing spikes time
                             X_cause_count = torch.ne(X_cause_index, i).tolist().count(False)
                             for k in Ae_index_LTP:
                                 for j in range(X_cause_count):
@@ -1489,7 +1488,6 @@ class MemristiveSTDP_KIST(LearningRule):
                                             continue
                                         else:
                                             self.connection.w[i, k.item()] += 1
-
 
                 if time - pulse_time_LTD > 0:
                     if torch.numel(
@@ -1516,7 +1514,6 @@ class MemristiveSTDP_KIST(LearningRule):
                                                 else:
                                                     self.connection.w[i, k.item()] -= 1
 
-
                 if time == simulation_time:
                     for l in range(time - pulse_time_LTD, time):
                         if torch.numel(torch.nonzero(target_r[j])) != 0:
@@ -1539,6 +1536,5 @@ class MemristiveSTDP_KIST(LearningRule):
                                                         continue
                                                     else:
                                                         self.connection.w[i, k.item()] -= 1
-
 
         super().update()
