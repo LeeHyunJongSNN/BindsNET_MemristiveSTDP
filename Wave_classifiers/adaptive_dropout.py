@@ -127,7 +127,7 @@ print("vLTP =", vLTP)
 print("vLTD =", vLTD)
 print("beta =", beta)
 print("dropout =", adaptive_dropout)
-print("dropout num =", dropout_num)
+print("dropout synapse num =", dropout_num)
 
 # Determines number of workers to use
 if n_workers == -1:
