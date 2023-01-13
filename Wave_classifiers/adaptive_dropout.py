@@ -60,13 +60,13 @@ parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
 parser.add_argument("--adaptive_dropout", type=bool, default=True)
-parser.add_argument("--dropout_num", type=int, default=5)
+parser.add_argument("--dropout_num", type=int, default=3)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
+parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
@@ -168,8 +168,8 @@ preprocessed = []
 pre_average = []
 dropout_index = []
 
-fname = "D:/SNN_dataset/Simple_Waves_RF/" \
-        "(sine+sawtooth)_1kHz_10_amplitude_18dB_20000.txt"
+fname = "/home/leehyunjong/Dataset_2.4GHz/1kHz_10/vector/"\
+        "(sine+square)_1kHz_10_vector_0dB_20000.txt"
 
 raw = np.loadtxt(fname, dtype='complex')
 
@@ -200,10 +200,10 @@ pre_size = int(np.shape(preprocessed)[0] / n_classes)
 if adaptive_dropout:
     for j in range(n_classes):
         pre_average.append(np.mean(preprocessed[j * pre_size:(j + 1) * pre_size], axis=0))
-        dropout_index.append(np.argwhere(pre_average[j] <= np.sort(pre_average[j])[0:dropout_num][-1]).flatten().tolist())
+        dropout_index.append(np.argwhere(pre_average[j] < np.sort(pre_average[j])[0:dropout_num + 1][-1]).flatten())
 
 dropout_index *= int(n_neurons / n_classes)
-dropout_exc = np.arange(n_neurons).tolist()
+dropout_exc = np.arange(n_neurons)
 
 print(n_train, n_test, n_classes)
 
