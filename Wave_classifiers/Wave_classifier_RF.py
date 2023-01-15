@@ -43,11 +43,8 @@ parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
-parser.add_argument("--exc", type=float, default=22.5)
-parser.add_argument("--inh", type=float, default=17.5)
-parser.add_argument("--rest", type=float, default=-65.0)
-parser.add_argument("--reset", type=float, default=-60.0)
-parser.add_argument("--thresh", type=float, default=-58.0)
+parser.add_argument("--exc", type=float, default=90)
+parser.add_argument("--inh", type=float, default=480)
 parser.add_argument("--theta_plus", type=float, default=0.003)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
@@ -55,19 +52,19 @@ parser.add_argument("--intensity", type=float, default=350)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=0.975)
+parser.add_argument("--test_ratio", type=float, default=0.95)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
 parser.add_argument("--dead_synapse", type=bool, default=False)
 parser.add_argument("--dead_synapse_input_num", type=int, default=2)
-parser.add_argument("--dead_synapse_exc_num", type=int, default=2)
+parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
+parser.add_argument("--spare_gpu", dest="spare_gpu", default=1)
 parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
 
 args = parser.parse_args()
@@ -80,9 +77,6 @@ n_train = args.n_train
 n_workers = args.n_workers
 exc = args.exc
 inh = args.inh
-rest = args.rest
-reset = args.reset
-thresh = args.thresh
 theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
@@ -166,38 +160,23 @@ test_data = []
 wave_data = []
 classes = []
 
-fname = " "
-for fname in ["/home/leehyunjong/Dataset_2.4GHz/1kHz_10(noise)/"
-              "(sine+noise)_1kHz_10_amplitude_0dB_20000.txt"]:
+fname = "D:/SNN_dataset/Simple_Waves_RF/" \
+        "(sine+sawtooth)_1kHz_10_amplitude_18dB_20000.txt"
 
-    print(fname)
-    f = open(fname, "r", encoding='utf-8-sig')
-    linedata = []
+raw = np.loadtxt(fname, dtype='complex')
 
-    for line in f:
-        if line[0] == "#":
-            continue
+for line in raw:
+    line_data = line[0:len(line)-1]
+    line_label = line[-1]
+    dcr = np.round(np.absolute(detrend(line_data - np.mean(line_data))), 2)
+    scaled = intensity * np.round(dcr / np.max(dcr), 2)
 
-        linedata = [complex(x) for x in line.split()]
-        if len(linedata) == 0:
-            continue
+    classes.append(line_label)
+    lbl = torch.tensor(line_label)
 
-        linedata_abs = [abs(x) for x in linedata[0:len(linedata) - 1]]
-
-        # linedata_normalized = minmax_scale(linedata_abs).tolist()
-        # linedata_intensity = [intensity * x for x in linedata_normalized[0:len(linedata_normalized)]]
-
-        linedata_intensity = [intensity * x for x in linedata_abs[0:len(linedata_abs)]]
-
-        cl = complex(linedata[-1])
-        classes.append(cl)
-        lbl = torch.tensor([cl])
-
-        converted = torch.tensor(linedata_intensity)
-        encoded = encoder.enc(datum=converted, time=time, dt=dt)
-        wave_data.append({"encoded_image": encoded, "label": lbl})
-
-    f.close()
+    converted = torch.tensor(scaled, dtype=torch.float32)
+    encoded = encoder.enc(datum=converted, time=time, dt=dt)
+    wave_data.append({"encoded_image": encoded, "label": lbl})
 
 train_data, test_data = train_test_split(wave_data, test_size=test_ratio)
 
@@ -216,9 +195,6 @@ network = DiehlAndCook2015_MemSTDP(
     n_neurons=n_neurons,
     exc=exc,
     inh=inh,
-    rest=rest,
-    reset=reset,
-    thresh=thresh,
     update_rule=MemristiveSTDP_TimeProportion,
     dt=dt,
     norm=1.0,

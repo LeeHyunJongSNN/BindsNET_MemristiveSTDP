@@ -43,17 +43,14 @@ parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=17.5)
-parser.add_argument("--rest", type=float, default=-65.0)
-parser.add_argument("--reset", type=float, default=-60.0)
-parser.add_argument("--thresh", type=float, default=-52.0)
-parser.add_argument("--theta_plus", type=float, default=0.0005)
+parser.add_argument("--theta_plus", type=float, default=0.001)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=800)
+parser.add_argument("--intensity", type=float, default=1800)    # increase or decrease by 150
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=0.95)
+parser.add_argument("--test_ratio", type=float, default=59/60)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
@@ -78,9 +75,6 @@ n_train = args.n_train
 n_workers = args.n_workers
 exc = args.exc
 inh = args.inh
-rest = args.rest
-reset = args.reset
-thresh = args.thresh
 theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
@@ -165,45 +159,28 @@ test_data = []
 wave_data = []
 classes = []
 
-fname = " "
-for fname in ["/home/leehyunjong/Wi-Fi_Preambles/"
-              "WIFI_10MHz_IQvector_(minus)6dB_20000.txt"]:
+fname = "D:/SNN_dataset/Wi-Fi_Preambles/"\
+        "WIFI_10MHz_IQvector_18dB_20000.txt"
 
-    print(fname)
-    f = open(fname, "r", encoding='utf-8-sig')
-    linedata = []
+raw = np.loadtxt(fname, dtype='complex')
 
-    for line in f:
-        if line[0] == "#":
-            continue
+for line in raw:
+    line_data = line[0:len(line) - 1]
+    line_label = line[-1]
+    dcr = detrend(line_data - np.mean(line_data))
+    fft1 = np.fft.fft(dcr[16:80]) / 64
+    fft2 = np.fft.fft(dcr[96:160]) / 64
+    fft3 = np.fft.fft(dcr[192:256]) / 64
+    fft4 = np.fft.fft(dcr[256:len(dcr)]) / 64
+    fft = np.concatenate((fft1, fft2, fft3, fft4), axis=0)
+    scaled = intensity * np.abs(fft)
 
-        linedata = [complex(x) for x in line.split()]
-        if len(linedata) == 0:
-            continue
+    classes.append(line_label)
+    lbl = torch.tensor(line_label).long()
 
-        linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
-        linedata_dcremoved = detrend(linedata_labelremoved - np.mean(linedata_labelremoved))    # removing DC offset
-
-        linedata_fft_1 = np.fft.fft([x for x in linedata_dcremoved[16:80]]) / 64
-        linedata_fft_2 = np.fft.fft([x for x in linedata_dcremoved[96:160]]) / 64
-        linedata_fft_3 = np.fft.fft([x for x in linedata_dcremoved[192:256]]) / 64
-        linedata_fft_4 = np.fft.fft([x for x in linedata_dcremoved[256:len(linedata_dcremoved)]]) / 64
-        linedata_fft = linedata_fft_1.tolist() + linedata_fft_2.tolist() + \
-                       linedata_fft_3.tolist() + linedata_fft_4.tolist()
-
-        linedata_intensity = [intensity * abs(x) for x in linedata_fft[0:len(linedata_fft)]]
-
-        # linedata_intensity = [intensity * abs(x) for x in linedata[0:len(linedata) - 1]]
-
-        cl = complex(linedata[-1])
-        classes.append(cl)
-        lbl = torch.tensor([cl])
-
-        converted = torch.tensor(linedata_intensity)
-        encoded = encoder.enc(datum=converted, time=time, dt=dt)
-        wave_data.append({"encoded_image": encoded, "label": lbl})
-
-    f.close()
+    converted = torch.tensor(scaled, dtype=torch.float32)
+    encoded = encoder.enc(datum=converted, time=time, dt=dt)
+    wave_data.append({"encoded_image": encoded, "label": lbl})
 
 train_data, test_data = train_test_split(wave_data, test_size=test_ratio)
 
@@ -222,9 +199,6 @@ network = DiehlAndCook2015_MemSTDP(
     n_neurons=n_neurons,
     exc=exc,
     inh=inh,
-    rest=rest,
-    reset=reset,
-    thresh=thresh,
     update_rule=MemristiveSTDP_TimeProportion,
     dt=dt,
     norm=1.0,
