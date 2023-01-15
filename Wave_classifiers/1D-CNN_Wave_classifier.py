@@ -8,16 +8,16 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 
+# Set hyper parameters
 max_len = 320
 embedding_dim = 320
-dropout_ratio = 0.2
+dropout_ratio = 0.3
 num_filters = 160
 kernel_size_1 = 4
 kernel_size_2 = 8
 kernel_size_3 = 16
 hidden_units_1 = 32
 hidden_units_2 = 16
-scale = 1
 
 test_valid_ratio = 0.3
 test_ratio = 0.5
@@ -29,8 +29,8 @@ wave_data = []
 wave_label = []
 
 fname = " "
-for fname in ["/home/leehyunjong/Wi-Fi_Preambles/"
-              "160_Shifted_WIFI_10MHz_IQvector_(minus)6dB_20000.txt"]:
+for fname in ["D:/SNN_dataset/Wi-Fi_Preambles/"
+              "WIFI_10MHz_IQvector_(minus)3dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -48,7 +48,7 @@ for fname in ["/home/leehyunjong/Wi-Fi_Preambles/"
         # linedata_imag = [x.imag for x in linedata[0:len(linedata) - 1]]
         # linedata_all = linedata_real + linedata_imag
 
-        linedata_abs = [scale * abs(x) for x in linedata[0:len(linedata) - 1]]
+        linedata_abs = [abs(x) for x in linedata[0:len(linedata) - 1]]
 
         cl = linedata[-1].real
 
@@ -60,6 +60,7 @@ for fname in ["/home/leehyunjong/Wi-Fi_Preambles/"
 
 train_data, test_valid_data, train_label, test_valid_label = train_test_split(
     wave_data, wave_label, test_size=test_valid_ratio)
+
 valid_data, test_data, valid_label, test_label = train_test_split(
     test_valid_data, test_valid_label, test_size=test_ratio)
 
@@ -95,9 +96,6 @@ mc = ModelCheckpoint('best_model.h5', monitor='val_acc', mode='max', verbose=1, 
 model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['acc'])
 history = model.fit(train_data, train_label, validation_data=(valid_data, valid_label), epochs=400,
                     batch_size=64, use_multiprocessing=True, callbacks=[es, mc])
-
-# history = model.fit(train_data, train_label, validation_data=(valid_data, valid_label), epochs=400,
-#                     batch_size=64, use_multiprocessing=True)
 
 print("\n test accuracy: %.4f" % (model.evaluate(test_data, test_label, batch_size=64)[1]))
 
