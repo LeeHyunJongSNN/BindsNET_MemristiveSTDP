@@ -54,12 +54,12 @@ def linear_rate(datum: torch.Tensor, time: int, dt: float = 1.0, **kwargs) -> to
         dimension.
     """
     time = int(time / dt)
-
+    b = 4
     shape, size = datum.shape, datum.numel()
 
-    converted = (40 * datum + 11 ).view(-1)
+    converted = (40 * datum + b ).view(-1)
     for i in range(len(converted)):
-        if converted[i].item() == 11:
+        if converted[i].item() == b:
             converted[i] = 0
 
     spikes = torch.zeros(time, size).byte()

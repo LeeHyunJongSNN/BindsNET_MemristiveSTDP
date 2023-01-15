@@ -38,7 +38,8 @@ parser.add_argument("--padding", type=int, default=0)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--time", type=int, default=50)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=1800)
+parser.add_argument("--intensity", type=float, default=1500)
+parser.add_argument("--norm", type=float, default=16.0)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=250)
@@ -72,6 +73,7 @@ vLTD = args.vLTD
 beta = args.beta
 enocder_type = args.encoder_type
 intensity = args.intensity
+norm = args.norm
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 train = args.train
@@ -252,7 +254,7 @@ for epoch in range(n_epochs):
         label = batch["label"]
 
         # Run the network on the input.
-        network.run(inputs=inputs, time=time,
+        network.run(inputs=inputs, time=time, norm=norm,
                     rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta)
 
