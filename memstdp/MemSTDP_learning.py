@@ -880,6 +880,152 @@ class MemristiveSTDP(LearningRule):
         super().update()
 
 
+    def _conv2d_connection_update(self, **kwargs) -> None:
+        # language=rst
+        """
+        Post-pre learning rule for ``Conv2dConnection`` subclass of
+        ``AbstractConnection`` class.
+        """
+        # Get convolutional layer parameters.
+        (
+            out_channels,
+            in_channels,
+            kernel_height,
+            kernel_width,
+        ) = self.connection.w.size()
+        padding, stride = self.connection.padding, self.connection.stride
+        batch_size = self.source.batch_size
+
+        # Reshaping spike traces and spike occurrences.
+        source_x = im2col_indices(
+            self.source.x, kernel_height, kernel_width, padding=padding, stride=stride
+        )
+        target_x = self.target.x.view(batch_size, out_channels, -1)
+        source_s = im2col_indices(
+            self.source.s.float(),
+            kernel_height,
+            kernel_width,
+            padding=padding,
+            stride=stride,
+        )
+        target_s = self.target.s.view(batch_size, out_channels, -1).float()
+
+        update = 0
+
+        # Factors for nonlinear update
+        vltp = kwargs.get('vLTP')
+        vltd = kwargs.get('vLTD')
+        b = kwargs.get('beta')
+        gmax = torch.zeros_like(self.connection.w) + 1
+        gmin = torch.zeros_like(self.connection.w)
+
+        # Boolean varibles for addtional feature
+        grand = kwargs.get("random_G")  # Random distribution Gmax and Gmin
+
+        # Random Conductance uperbound and underbound
+        if grand:
+            gmax = kwargs.get('rand_gmax')
+            gmin = kwargs.get('rand_gmin')
+
+        g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
+        g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
+
+        norm = 16
+
+        if vltp == 0 and vltd ==0:
+            # LTD
+            if self.nu[0].any():
+                pre = self.reduction(
+                    torch.bmm(target_x, source_s.permute((0, 2, 1))), dim=0
+                )
+                update = -(pre.view(self.connection.w.size())
+                        * (self.connection.w - (gmax - gmin) / 512) / norm
+                )
+
+            # LTP
+            if self.nu[1].any():
+                post = self.reduction(
+                    torch.bmm(target_s, source_x.permute((0, 2, 1))), dim=0
+                )
+                update = (post.view(self.connection.w.size())
+                        * (self.connection.w - b * (gmax - gmin) / 512) / norm
+                )
+
+            self.connection.w += update
+
+        elif vltp != 0 and vltd == 0:
+            # LTD
+            if self.nu[0].any():
+                pre = self.reduction(
+                    torch.bmm(target_x, source_s.permute((0, 2, 1))), dim=0
+                )
+                update = -(pre.view(self.connection.w.size())
+                        * (self.connection.w - (gmax - gmin) / 512) / norm
+                )
+
+            # LTP
+            if self.nu[1].any():
+                post = self.reduction(
+                    torch.bmm(target_s, source_x.permute((0, 2, 1))), dim=0
+                )
+                update = (post.view(self.connection.w.size())
+                        * (g1ltp + gmin - self.connection.w)
+                        * (1 - np.exp(-vltp * b / 512)) / norm
+                )
+
+            self.connection.w += update
+
+
+        elif vltp == 0 and vltd != 0:
+            # LTD
+            if self.nu[0].any():
+                pre = self.reduction(
+                    torch.bmm(target_x, source_s.permute((0, 2, 1))), dim=0
+                )
+                update = -(pre.view(self.connection.w.size())
+                        * (g1ltd - gmax + self.connection.w)
+                        * (1 - np.exp(vltd / 512)) / norm
+                )
+
+            # LTP
+            if self.nu[1].any():
+                post = self.reduction(
+                    torch.bmm(target_s, source_x.permute((0, 2, 1))), dim=0
+                )
+                update = (post.view(self.connection.w.size())
+                        * (self.connection.w - b * (gmax - gmin) / 512) / norm
+                )
+
+            self.connection.w += update
+
+
+        elif vltp != 0 and vltd != 0:
+            # LTD
+            if self.nu[0].any():
+                pre = self.reduction(
+                    torch.bmm(target_x, source_s.permute((0, 2, 1))), dim=0
+                )
+                update = -(pre.view(self.connection.w.size())
+                        * (g1ltd - gmax + self.connection.w)
+                        * (1 - np.exp(vltd / 512)) / norm
+                )
+
+            # LTP
+            if self.nu[1].any():
+                post = self.reduction(
+                    torch.bmm(target_s, source_x.permute((0, 2, 1))), dim=0
+                )
+                update = (post.view(self.connection.w.size())
+                        * (g1ltp + gmin - self.connection.w)
+                        * (1 - np.exp(-vltp * b / 512)) / norm
+                )
+
+            self.connection.w += update
+
+
+        super().update()
+
+
 class MemristiveSTDP_TimeProportion(LearningRule):
     # language=rst
     """
