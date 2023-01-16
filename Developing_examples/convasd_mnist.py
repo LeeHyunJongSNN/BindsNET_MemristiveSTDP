@@ -295,7 +295,7 @@ for j in range(10):
     pre_average.append(np.mean(preprocessed[j * pre_size:(j + 1) * pre_size], axis=0))
     dropout_index.append(np.argwhere(pre_average[j] < np.sort(pre_average[j])[0:dropout_num + 1][-1]).flatten())
 
-dropout_index *= int(n_neurons / n_classes)
+dropout_index *= int(np.ceil(n_neurons / n_classes))
 dropout_exc = np.arange(n_neurons)
 
 # Directs network to GPU
