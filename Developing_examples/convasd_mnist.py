@@ -63,7 +63,7 @@ parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--dropout", type=bool, default=True)
-parser.set_defaults(plot=True, gpu=True, train=True)
+parser.set_defaults(conv_plot=False, asd_plot=True, gpu=True, train=True)
 
 args = parser.parse_args()
 
@@ -90,7 +90,8 @@ dropout_num = args.dropout_num
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 train = args.train
-plot = args.plot
+conv_plot = args.conv_plot
+asd_plot = args.asd_plot
 dropout = args.dropout
 gpu = args.gpu
 
@@ -222,7 +223,7 @@ for epoch in range(n_epochs):
         conv_train_labels.append(label.tolist())
 
         # Optionally plot various simulation information.
-        if plot and batch_size == 1:
+        if conv_plot and batch_size == 1:
             image = batch["image"].view(28, 28)
 
             inpt = inputs["X"].view(time, 784).sum(0).view(28, 28)
@@ -435,7 +436,7 @@ for epoch in range(n_epochs):
         spike_record[step % update_interval] = asd_spikes["Ae"].get("s").squeeze()
 
         # Optionally plot various simulation information.
-        if plot:
+        if asd_plot:
             image = batch["encoded_image"].view(num_inputs, encoding_time)
             inpt = inputs["X"].view(encoding_time, wave_data[-1]["encoded_image"].shape[1]).sum(0).view(1, num_inputs)
             input_exc_weights = network_asd.connections[("X", "Ae")].w
