@@ -14,7 +14,7 @@ from scipy.signal import detrend
 
 from bindsnet.encoding import PoissonEncoder
 from bindsnet.memstdp.MemSTDP_models import DiehlAndCook2015_MemSTDP
-from bindsnet.memstdp.MemSTDP_learning import PostPre, MemristiveSTDP_TimeProportion
+from bindsnet.memstdp.MemSTDP_learning import PostPre, MemristiveSTDP, MemristiveSTDP_TimeProportion
 from bindsnet.network import Network
 from bindsnet.network.monitors import Monitor
 from bindsnet.network.nodes import DiehlAndCookNodes, Input
@@ -43,34 +43,36 @@ parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--batch_size", type=int, default=1)
 parser.add_argument("--kernel_size", type=int, default=12)
 parser.add_argument("--stride", type=int, default=4)
-parser.add_argument("--n_filters", type=int, default=1200)
+parser.add_argument("--n_filters", type=int, default=200)
 parser.add_argument("--padding", type=int, default=0)
 parser.add_argument("--n_workers", type=int, default=-1)
-parser.add_argument("--conv_time", type=int, default=40)
+parser.add_argument("--conv_time", type=int, default=100)
 parser.add_argument("--conv_dt", type=int, default=1.0)
 parser.add_argument("--asd_time", type=int, default=500)
 parser.add_argument("--asd_dt", type=int, default=1.0)
 parser.add_argument("--n_neurons", type=int, default=4)
 parser.add_argument("--exc", type=int, default=22.5)
 parser.add_argument("--inh", type=int, default=17.5)
-parser.add_argument("--theta_plus", type=float, default=0.05)
-parser.add_argument("--conv_scale", type=float, default=800.0)
-parser.add_argument("--asd_scale", type=float, default=10000.0)
-parser.add_argument("--dropout_num", type=int, default=20)
+parser.add_argument("--theta_plus", type=float, default=0.01)
+parser.add_argument("--conv_scale", type=float, default=600.0)
+parser.add_argument("--asd_scale", type=float, default=1200.0)
+parser.add_argument("--dropout_num", type=int, default=1)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
+parser.add_argument("--norm", type=float, default=1.0)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=0.9)
+parser.add_argument("--test_ratio", type=float, default=0.5)
+parser.add_argument("--n_asd_train", type=int, default=1000)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
 parser.add_argument("--dropout", type=bool, default=True)
-parser.set_defaults(conv_plot=False, asd_plot=True, gpu=True, train=True)
+parser.set_defaults(conv_plot=False, asd_plot=False, gpu=True, train=True)
 
 args = parser.parse_args()
 
@@ -97,10 +99,12 @@ random_G = args.random_G
 vLTP = args.vLTP
 vLTD = args.vLTD
 beta = args.beta
+norm = args.norm
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 train = args.train
 test_ratio = args.test_ratio
+n_asd_train = args.n_asd_train - 1
 conv_plot = args.conv_plot
 asd_plot = args.asd_plot
 gpu = args.gpu
@@ -176,6 +180,12 @@ per_class = int((n_filters * conv_size * conv_size) / 10)
 
 n_train = len(train_data)
 n_test = len(test_data)
+
+rand_gmax_conv = 0.5 * torch.rand(conv_time, 1, kernel_size, kernel_size).to(device) + 0.5
+rand_gmin_conv = 0.5 * torch.rand(conv_time, 1, kernel_size, kernel_size).to(device)
+
+rand_gmax_asd = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+rand_gmin_asd = 0.5 * torch.rand(num_inputs, n_neurons)
 
 # Build network.
 network_conv = Network()
@@ -256,7 +266,7 @@ for epoch in range(n_epochs):
 
     for step, batch in enumerate(tqdm(train_data)):
         # Get next input sample.
-        if step > n_test:
+        if step > n_train:
             break
         inputs = {"X": batch["encoded_image"].view(conv_time, batch_size, 1, input_size, input_size)}
         if gpu:
@@ -264,13 +274,9 @@ for epoch in range(n_epochs):
         label = batch["label"]
 
         # Run the network on the input.
-        network_conv.run(inputs=inputs, time=conv_time)
-
-        org = conv_spikes["Y"].get("s").view(conv_time, -1).int().numpy()
-        pca.fit(org)
-        dec = pca.transform(org).squeeze()
-        conv_train_data.append(np.abs(dec).tolist())
-        conv_train_labels.append([label.tolist()])
+        network_conv.run(inputs=inputs, time=conv_time, norm=norm,
+                         rand_gmax=rand_gmax_conv, rand_gmin=rand_gmin_conv, random_G=random_G,
+                         vLTP=vLTP, vLTD=vLTD, beta=beta)
 
         # Optionally plot various simulation information.
         if conv_plot and batch_size == 1:
@@ -299,6 +305,39 @@ for epoch in range(n_epochs):
 
 print("Progress: %d / %d (%.4f seconds)\n" % (n_epochs, n_epochs, t() - start))
 print("Conv Training complete.\n")
+
+print("\nBegin Conv feature extracting\n")
+network_conv.train(mode=False)
+start = t()
+
+for epoch in range(n_epochs):
+    if epoch % progress_interval == 0:
+        print("Progress: %d / %d (%.4f seconds)" % (epoch, n_epochs, t() - start))
+        start = t()
+
+    for step, batch in enumerate(tqdm(train_data)):
+        # Get next input sample.
+        if step > n_asd_train:
+            break
+        inputs = {"X": batch["encoded_image"].view(conv_time, batch_size, 1, input_size, input_size)}
+        if gpu:
+            inputs = {k: v.cuda() for k, v in inputs.items()}
+        label = batch["label"]
+
+        # Run the network on the input.
+        network_conv.run(inputs=inputs, time=conv_time, norm=norm,
+                         rand_gmax=rand_gmax_conv, rand_gmin=rand_gmin_conv, random_G=random_G,
+                         vLTP=vLTP, vLTD=vLTD, beta=beta)
+
+        org = conv_spikes["Y"].get("s").view(conv_time, -1).int().numpy()
+        pca.fit(org)
+        dec = np.linalg.eig(np.fft.fft2(pca.transform(org).squeeze().reshape(
+            int(np.sqrt(conv_time)), int(np.sqrt(conv_time)))))[0]
+        dcr = np.absolute(detrend(dec - np.mean(dec)))
+        conv_train_data.append(dcr.tolist())
+        conv_train_labels.append([label.tolist()])
+
+        network_conv.reset_state_variables()  # Reset state variables.
 
 wave_train_data = []
 dropout_index = []
@@ -329,7 +368,7 @@ n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 network_asd = DiehlAndCook2015_MemSTDP(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
-    update_rule=PostPre,
+    update_rule=MemristiveSTDP_TimeProportion,
     exc=exc,
     inh=inh,
     dt=conv_dt,
@@ -338,8 +377,8 @@ network_asd = DiehlAndCook2015_MemSTDP(
     inpt_shape=(1, num_inputs, 1),
 )
 
-preprocessed = whole_data[whole_data[:, conv_time].argsort()]
-preprocessed = preprocessed[:, 0:conv_time]
+preprocessed = whole_data[whole_data[:, int(np.sqrt(conv_time))].argsort()]
+preprocessed = preprocessed[:, 0:int(np.sqrt(conv_time))]
 
 n_classes = (np.unique(conv_classes)).size
 pre_size = int(np.shape(preprocessed)[0] / n_classes)
@@ -375,9 +414,6 @@ inh_voltage_monitor = Monitor(network_asd.layers["Ai"], ["v"], time=int(asd_time
 network_asd.add_monitor(exc_voltage_monitor, name="exc_voltage")
 network_asd.add_monitor(inh_voltage_monitor, name="inh_voltage")
 
-rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
-rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-
 # Set up monitors for spikes and voltages
 asd_spikes = {}
 for layer in set(network_asd.layers):
@@ -412,7 +448,7 @@ for epoch in range(n_epochs):
         start = t()
 
     for step, batch in enumerate(tqdm(wave_train_data)):
-        if step > n_train:
+        if step > n_asd_train:
             break
         # Get next input sample.
         inputs = {"X": batch["encoded_image"].view(int(asd_time / asd_dt), 1, 1, num_inputs, 1)}
@@ -485,7 +521,7 @@ for epoch in range(n_epochs):
         s_record = []
         t_record = []
         network_asd.run(inputs=inputs, time=asd_time, input_time_dim=1, s_record=s_record, t_record=t_record,
-                        simulation_time=asd_time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
+                        simulation_time=asd_time, rand_gmax=rand_gmax_asd, rand_gmin=rand_gmin_asd, random_G=random_G,
                         vLTP=vLTP, vLTD=vLTD, beta=beta,
                         dead_synapse=dropout, dead_index_input=dropout_index, dead_index_exc=dropout_exc)
 
@@ -500,7 +536,7 @@ for epoch in range(n_epochs):
         if asd_plot:
             image = batch["encoded_image"].view(num_inputs, asd_time)
             inpt = inputs["X"].view(asd_time, wave_train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, num_inputs)
-            input_exc_weights = network_asd.connections[("X", "Ae")].w * conv_time / 10
+            input_exc_weights = network_asd.connections[("X", "Ae")].w
             square_weights = get_square_weights(
                 input_exc_weights.view(wave_train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, (1, num_inputs)
             )
@@ -550,12 +586,17 @@ for epoch in range(n_epochs):
         label = batch["label"]
 
         # Run the network on the input.
-        network_conv.run(inputs=inputs, time=conv_time)
+        network_conv.run(inputs=inputs, time=conv_time, norm=norm,
+                         rand_gmax=rand_gmax_conv, rand_gmin=rand_gmin_conv, random_G=random_G,
+                         vLTP=vLTP, vLTD=vLTD, beta=beta)
+
 
         org = conv_spikes["Y"].get("s").view(conv_time, -1).int().numpy()
         pca.fit(org)
-        dec = pca.transform(org)
-        conv_test_data.append(np.abs(dec).tolist())
+        dec = np.linalg.eig(np.fft.fft2(pca.transform(org).squeeze().reshape(
+            int(np.sqrt(conv_time)), int(np.sqrt(conv_time)))))[0]
+        dcr = np.absolute(detrend(dec - np.mean(dec)))
+        conv_test_data.append(dcr.tolist())
         conv_test_labels.append([label.tolist()])
 
         network_conv.reset_state_variables()  # Reset state variables.
@@ -602,7 +643,7 @@ for step, batch in enumerate(wave_test_data):
     s_record = []
     t_record = []
     network_asd.run(inputs=inputs, time=asd_time, input_time_dim=1, s_record=s_record, t_record=t_record,
-                    simulation_time=asd_time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
+                    simulation_time=asd_time, rand_gmax=rand_gmax_asd, rand_gmin=rand_gmin_asd, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
                     dead_synapse=dropout, dead_index_input=dropout_index, dead_index_exc=dropout_exc)
 
