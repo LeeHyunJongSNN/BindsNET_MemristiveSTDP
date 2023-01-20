@@ -945,7 +945,7 @@ class MemristiveSTDP(LearningRule):
                     torch.bmm(target_x, source_s.permute((0, 2, 1))), dim=0
                 )
                 update = -(pre.view(self.connection.w.size())
-                        * (self.connection.w - (gmax - gmin) / 512) / norm
+                        * (self.connection.w - (gmax - gmin) / 256) / norm
                 )
 
             # LTP
@@ -954,7 +954,7 @@ class MemristiveSTDP(LearningRule):
                     torch.bmm(target_s, source_x.permute((0, 2, 1))), dim=0
                 )
                 update = (post.view(self.connection.w.size())
-                        * (self.connection.w - b * (gmax - gmin) / 512) / norm
+                        * (self.connection.w - b * (gmax - gmin) / 256) / norm
                 )
 
             self.connection.w += update
@@ -967,7 +967,7 @@ class MemristiveSTDP(LearningRule):
                     torch.bmm(target_x, source_s.permute((0, 2, 1))), dim=0
                 )
                 update = -(pre.view(self.connection.w.size())
-                        * (self.connection.w - (gmax - gmin) / 512) / norm
+                        * (self.connection.w - (gmax - gmin) / 256) / norm
                 )
 
             # LTP
@@ -977,7 +977,7 @@ class MemristiveSTDP(LearningRule):
                 )
                 update = (post.view(self.connection.w.size())
                         * (g1ltp + gmin - self.connection.w)
-                        * (1 - np.exp(-vltp * b / 512)) / norm
+                        * (1 - np.exp(-vltp * b / 256)) / norm
                 )
 
             self.connection.w += update
@@ -991,7 +991,7 @@ class MemristiveSTDP(LearningRule):
                 )
                 update = -(pre.view(self.connection.w.size())
                         * (g1ltd - gmax + self.connection.w)
-                        * (1 - np.exp(vltd / 512)) / norm
+                        * (1 - np.exp(vltd / 256)) / norm
                 )
 
             # LTP
@@ -1000,7 +1000,7 @@ class MemristiveSTDP(LearningRule):
                     torch.bmm(target_s, source_x.permute((0, 2, 1))), dim=0
                 )
                 update = (post.view(self.connection.w.size())
-                        * (self.connection.w - b * (gmax - gmin) / 512) / norm
+                        * (self.connection.w - b * (gmax - gmin) / 256) / norm
                 )
 
             self.connection.w += update
@@ -1014,7 +1014,7 @@ class MemristiveSTDP(LearningRule):
                 )
                 update = -(pre.view(self.connection.w.size())
                         * (g1ltd - gmax + self.connection.w)
-                        * (1 - np.exp(vltd / 512)) / norm
+                        * (1 - np.exp(vltd / 256)) / norm
                 )
 
             # LTP
@@ -1024,7 +1024,7 @@ class MemristiveSTDP(LearningRule):
                 )
                 update = (post.view(self.connection.w.size())
                         * (g1ltp + gmin - self.connection.w)
-                        * (1 - np.exp(-vltp * b / 512)) / norm
+                        * (1 - np.exp(-vltp * b / 256)) / norm
                 )
 
             self.connection.w += update
