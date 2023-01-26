@@ -58,8 +58,8 @@ parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
 parser.add_argument("--adaptive_dropconnect", type=bool, default=True)
 parser.add_argument("--adaptive_reinforceconnect", type=bool, default=True)
-parser.add_argument("--drop_num", type=int, default=3)
-parser.add_argument("--intense_num", type=int, default=2)
+parser.add_argument("--drop_num", type=int, default=2)
+parser.add_argument("--reinforce_num", type=int, default=2)
 parser.add_argument("--dead_synapse", type=bool, default=False)
 parser.add_argument("--dead_synapse_input_num", type=int, default=4)
 parser.add_argument("--dead_synapse_exc_num", type=int, default=5)
@@ -99,7 +99,7 @@ dead_synapse = args.dead_synapse
 dead_synapse_input_num = args.dead_synapse_input_num
 dead_synapse_exc_num = args.dead_synapse_exc_num
 drop_num = args.drop_num
-intense_num = args.intense_num
+reinforce_num = args.reinforce_num
 train = args.train
 train_plot = args.train_plot
 test_plot = args.test_plot
@@ -138,7 +138,7 @@ print("dead synapse =", dead_synapse)
 if adaptive_dropconnect:
     print("drop synapse num =", drop_num)
 if adaptive_reinforceconnect:
-    print("intense synapse num =", intense_num)
+    print("intense synapse num =", reinforce_num)
 if dead_synapse:
     print("%d dead synapses per %d exc neurons" % (dead_synapse_input_num, dead_synapse_exc_num))
 
@@ -222,10 +222,10 @@ if adaptive_dropconnect:
 if adaptive_reinforceconnect:
     for j in range(n_classes):
         pre_average.append(np.mean(preprocessed[j * pre_size:(j + 1) * pre_size], axis=0))
-        values = np.sort(pre_average[j])[::-1][:intense_num]
+        values = np.sort(pre_average[j])[::-1][:reinforce_num]
         reinforce_scale.append(values / np.max(values))
         reinforce_input.append(
-            np.argwhere(pre_average[j] > np.sort(pre_average[j])[0:num_inputs - intense_num][-1]).flatten())
+            np.argwhere(pre_average[j] > np.sort(pre_average[j])[0:num_inputs - reinforce_num][-1]).flatten())
 
 if dead_synapse:
     for i in range(dead_synapse_exc_num):
