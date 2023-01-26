@@ -221,8 +221,10 @@ class MemristiveSTDP_Simplified(LearningRule):
         Ae_index_LTD = 0
 
         # Dead synapses variables
-        dead_index_input = []
-        dead_index_exc = []
+        drop_index_input = []
+        drop_index_exc = []
+        reinforce_index_input = []
+        reinforce_index_exc = []
 
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
@@ -233,7 +235,9 @@ class MemristiveSTDP_Simplified(LearningRule):
 
         # Boolean varibles for addtional feature
         grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
-        dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
+        drop_synapses = kwargs.get('drop_synapse')  # Drop synapses simulation
+        reinforce_synapses = kwargs.get('reinforce_synapse')  # Reinforce synapses simulation
+        dead_synapses = kwargs.get('drop_synapse')  # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
         if grand:
@@ -243,6 +247,30 @@ class MemristiveSTDP_Simplified(LearningRule):
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
+        # Drop synpase
+        if drop_synapses:
+            drop_index_input = kwargs.get('drop_index_input')
+            drop_index_exc = kwargs.get('drop_index_exc')
+
+            for i in range(len(drop_index_exc)):
+                for j in drop_index_input[i]:
+                    self.connection.w[j, drop_index_exc[i]] = 0
+
+        # Reinforce synpase
+        if reinforce_synapses:
+            reinforce_index_input = kwargs.get('reinforce_index_input')
+            reinforce_index_exc = kwargs.get('reinforce_index_exc')
+            reinforce_scale = kwargs.get('reinforce_scale')
+
+            for i in range(len(reinforce_index_exc)):
+                for j in reinforce_index_input[i]:
+                    if self.connection.w[j, reinforce_index_exc[i]] <= 0.3:
+                        self.connection.w[j, reinforce_index_exc[i]] = gmax[j, reinforce_index_exc[i]] * \
+                                                                        reinforce_scale[int(reinforce_index_exc[i])][
+                                                                            int(np.where(
+                                                                                j == reinforce_index_input[i])[
+                                                                                    0])] * 0.6 / len(reinforce_scale[0])
+
         # Dead synpase simulation
         if dead_synapses:
             dead_index_input = kwargs.get('dead_index_input')
@@ -251,6 +279,7 @@ class MemristiveSTDP_Simplified(LearningRule):
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
                     self.connection.w[j, dead_index_exc[i]] = 0
+
 
         # Weight update with memristive characteristc
         if vltp == 0 and vltd == 0:  # Fully linear update
@@ -571,8 +600,10 @@ class MemristiveSTDP(LearningRule):
         Ae_index_LTD = 0
 
         # Dead synapses variables
-        dead_index_input = []
-        dead_index_exc = []
+        drop_index_input = []
+        drop_index_exc = []
+        reinforce_index_input = []
+        reinforce_index_exc = []
 
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
@@ -583,7 +614,9 @@ class MemristiveSTDP(LearningRule):
 
         # Boolean varibles for addtional feature
         grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
-        dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
+        drop_synapses = kwargs.get('drop_synapse')  # Drop synapses simulation
+        reinforce_synapses = kwargs.get('reinforce_synapse')  # Reinforce synapses simulation
+        dead_synapses = kwargs.get("dead_synapse")  # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
         if grand:
@@ -593,6 +626,30 @@ class MemristiveSTDP(LearningRule):
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
+        # Drop synpase
+        if drop_synapses:
+            drop_index_input = kwargs.get('drop_index_input')
+            drop_index_exc = kwargs.get('drop_index_exc')
+
+            for i in range(len(drop_index_exc)):
+                for j in drop_index_input[i]:
+                    self.connection.w[j, drop_index_exc[i]] = 0
+
+        # Reinforce synpase
+        if reinforce_synapses:
+            reinforce_index_input = kwargs.get('reinforce_index_input')
+            reinforce_index_exc = kwargs.get('reinforce_index_exc')
+            reinforce_scale = kwargs.get('reinforce_scale')
+
+            for i in range(len(reinforce_index_exc)):
+                for j in reinforce_index_input[i]:
+                    if self.connection.w[j, reinforce_index_exc[i]] <= 0.3:
+                        self.connection.w[j, reinforce_index_exc[i]] = gmax[j, reinforce_index_exc[i]] * \
+                                                                        reinforce_scale[int(reinforce_index_exc[i])][
+                                                                            int(np.where(
+                                                                                j == reinforce_index_input[i])[
+                                                                                    0])] * 0.6 / len(reinforce_scale[0])
+
         # Dead synpase simulation
         if dead_synapses:
             dead_index_input = kwargs.get('dead_index_input')
@@ -601,6 +658,7 @@ class MemristiveSTDP(LearningRule):
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
                     self.connection.w[j, dead_index_exc[i]] = 0
+
 
         # Weight update with memristive characteristc
         if vltp == 0 and vltd == 0:  # Fully linear update
@@ -1122,8 +1180,10 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         Ae_index_LTD = 0
 
         # Dead synapses variables
-        dead_index_input = []
-        dead_index_exc = []
+        drop_index_input = []
+        drop_index_exc = []
+        reinforce_index_input = []
+        reinforce_index_exc = []
 
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
@@ -1134,7 +1194,9 @@ class MemristiveSTDP_TimeProportion(LearningRule):
 
         # Boolean varibles for addtional feature
         grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
-        dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
+        drop_synapses = kwargs.get('drop_synapse')  # Drop synapses simulation
+        reinforce_synapses = kwargs.get('reinforce_synapse')  # Reinforce synapses simulation
+        dead_synapses = kwargs.get("dead_synapse")  # Dead synapses simulation
 
         # Random Conductance uperbound and underbound
         if grand:
@@ -1144,6 +1206,33 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
+        # Drop synpase
+        if drop_synapses:
+            drop_index_input = kwargs.get('drop_index_input')
+            drop_index_exc = kwargs.get('drop_index_exc')
+
+            for i in range(len(drop_index_exc)):
+                for j in drop_index_input[i]:
+                    self.connection.w[j, drop_index_exc[i]] = 0
+
+        # Reinforce synpase
+        if reinforce_synapses:
+            reinforce_index_input = kwargs.get('reinforce_index_input')
+            reinforce_index_exc = kwargs.get('reinforce_index_exc')
+            reinforce_scale = kwargs.get('reinforce_scale')
+
+            for i in range(len(reinforce_index_exc)):
+                for j in reinforce_index_input[i]:
+                    if self.connection.w[j, reinforce_index_exc[i]] <= reinforce_scale[int(reinforce_index_exc[i])][
+                                                                         int(np.where(
+                                                                             j == reinforce_index_input[i])[
+                                                                                 0])] * 0.5:
+                        self.connection.w[j, reinforce_index_exc[i]] = gmax[j, reinforce_index_exc[i]] * \
+                                                                     reinforce_scale[int(reinforce_index_exc[i])][
+                                                                         int(np.where(
+                                                                             j == reinforce_index_input[i])[
+                                                                                 0])] / len(reinforce_scale[0])
+
         # Dead synpase simulation
         if dead_synapses:
             dead_index_input = kwargs.get('dead_index_input')
@@ -1152,6 +1241,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
                     self.connection.w[j, dead_index_exc[i]] = 0
+
 
         # Weight update with memristive characteristc
         if vltp == 0 and vltd == 0:  # Fully linear update
@@ -1488,6 +1578,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                                         g1ltd[i, k.item()] - gmax[
                                                                                             i, k.item()]) * (
                                                                                                1 - np.exp(vltd / 256))
+
 
         super().update()
 
