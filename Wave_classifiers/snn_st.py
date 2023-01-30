@@ -53,21 +53,21 @@ parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
 parser.add_argument("--test_ratio", type=float, default=0.975)
 parser.add_argument("--random_G", type=bool, default=True)
-parser.add_argument("--vLTP", type=float, default=0.0)
-parser.add_argument("--vLTD", type=float, default=0.0)
+parser.add_argument("--vLTP", type=float, default=3.0)
+parser.add_argument("--vLTD", type=float, default=-3.0)
 parser.add_argument("--beta", type=float, default=1.0)
 parser.add_argument("--adaptive_dropconnect", type=bool, default=True)
 parser.add_argument("--adaptive_reinforceconnect", type=bool, default=True)
 parser.add_argument("--drop_num", type=int, default=2)
 parser.add_argument("--reinforce_num", type=int, default=2)
 parser.add_argument("--dead_synapse", type=bool, default=False)
-parser.add_argument("--dead_synapse_input_num", type=int, default=4)
-parser.add_argument("--dead_synapse_exc_num", type=int, default=5)
+parser.add_argument("--dead_synapse_input_num", type=int, default=5)
+parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
+parser.add_argument("--spare_gpu", dest="spare_gpu", default=1)
 parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
 
 args = parser.parse_args()
@@ -250,7 +250,7 @@ network = DiehlAndCook2015_MemSTDP(
     thresh=thresh,
     update_rule=MemristiveSTDP_TimeProportion,
     dt=dt,
-    norm=1.0,
+    norm=num_inputs / 10,
     theta_plus=theta_plus,
     inpt_shape=(1, num_inputs, 1),
 )

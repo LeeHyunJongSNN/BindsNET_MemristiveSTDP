@@ -9,11 +9,10 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
-from scipy.signal import detrend
 
-from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
-from bindsnet.memstdp import RankOrderTTFSEncoder
-from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
+from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, RepeatEncoder
+from bindsnet.memstdp import RankOrderTTFSEncoder, LinearRateEncoder
+from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP, KISTnetwork_MemSTDP
 from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified, MemristiveSTDP_TimeProportion
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
@@ -36,39 +35,45 @@ random_seed = random.randint(0, 100)
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=random_seed)
-parser.add_argument("--n_neurons", type=int, default=4)
+parser.add_argument("--adaptive_network", type=bool, default=True)
+parser.add_argument("--n_neurons", type=int, default=128)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=17.5)
 parser.add_argument("--rest", type=float, default=-65.0)
 parser.add_argument("--reset", type=float, default=-60.0)
-parser.add_argument("--thresh", type=float, default=-52.0)
-parser.add_argument("--theta_plus", type=float, default=0.001)
+parser.add_argument("--thresh", type=float, default=-56.0)
+parser.add_argument("--theta_plus", type=float, default=0.05)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=180)     # increase or decrease by 150
+parser.add_argument("--intensity", type=float, default=2048)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=0.95)
+parser.add_argument("--test_ratio", type=float, default=0.5)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
+parser.add_argument("--adaptive_dropconnect", type=bool, default=False)
+parser.add_argument("--adaptive_reinforceconnect", type=bool, default=False)
+parser.add_argument("--drop_num", type=int, default=1)
+parser.add_argument("--reinforce_num", type=int, default=1)
 parser.add_argument("--dead_synapse", type=bool, default=False)
-parser.add_argument("--dead_synapse_input_num", type=int, default=4)
-parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
+parser.add_argument("--dead_synapse_input_num", type=int, default=1)
+parser.add_argument("--dead_synapse_exc_num", type=int, default=1)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
+parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
 seed = args.seed
+adaptive_network = args.adaptive_network
 n_neurons = args.n_neurons
 n_epochs = args.n_epochs
 n_workers = args.n_workers
@@ -81,7 +86,7 @@ theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
 intensity = args.intensity
-enocder_type = args.encoder_type
+encoder_type = args.encoder_type
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 test_ratio = args.test_ratio
@@ -89,9 +94,13 @@ random_G = args.random_G
 vLTP = args.vLTP
 vLTD = args.vLTD
 beta = args.beta
+adaptive_dropconnect = args.adaptive_dropconnect
+adaptive_reinforceconnect = args.adaptive_reinforceconnect
 dead_synapse = args.dead_synapse
 dead_synapse_input_num = args.dead_synapse_input_num
 dead_synapse_exc_num = args.dead_synapse_exc_num
+drop_num = args.drop_num
+reinforce_num = args.reinforce_num
 train = args.train
 train_plot = args.train_plot
 test_plot = args.test_plot
@@ -117,14 +126,23 @@ else:
         gpu = False
 
 torch.set_num_threads(os.cpu_count() - 1)
-
 print("Running on Device =", device)
 print("Random Seed =", random_seed)
 print("Random G value =", random_G)
 print("vLTP =", vLTP)
 print("vLTD =", vLTD)
 print("beta =", beta)
+print("drop connect =", adaptive_dropconnect)
+print("reinforce connect =", adaptive_reinforceconnect)
 print("dead synapse =", dead_synapse)
+
+if adaptive_dropconnect:
+    print("drop synapse num =", drop_num)
+if adaptive_reinforceconnect:
+    print("intense synapse num =", reinforce_num)
+if dead_synapse:
+    print("%d dead synapses per %d exc neurons" % (dead_synapse_input_num, dead_synapse_exc_num))
+
 
 # Determines number of workers to use
 if n_workers == -1:
@@ -132,24 +150,22 @@ if n_workers == -1:
 
 print(n_workers, os.cpu_count() - 1)
 
-n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
-
-if enocder_type == "PoissonEncoder":
+if encoder_type == "PoissonEncoder":
     encoder = PoissonEncoder(time=time, dt=dt)
 
-elif enocder_type == "RankOrderEncoder":
+elif encoder_type == "RankOrderEncoder":
     encoder = RankOrderEncoder(time=time, dt=dt)
 
-elif enocder_type == "RankOrderTTFSEncoder":
+elif encoder_type == "RankOrderTTFSEncoder":
     encoder = RankOrderTTFSEncoder(time=time, dt=dt)
 
-elif enocder_type == "BernoulliEncoder":
+elif encoder_type == "BernoulliEncoder":
     encoder = BernoulliEncoder(time=time, dt=dt)
 
-elif enocder_type == "SingleEncoder":
-    encoder = SingleEncoder(time=time, dt=dt)
+elif encoder_type == "LinearRateEncoder":
+    encoder = LinearRateEncoder(time=time, dt=dt)
 
-elif enocder_type == "RepeatEncoder":
+elif encoder_type == "RepeatEncoder":
     encoder = RepeatEncoder(time=time, dt=dt)
 
 else:
@@ -161,22 +177,64 @@ test_data = []
 wave_data = []
 classes = []
 
-fname = "D:/SNN_dataset/Wi-Fi_Preambles/"\
-        "WIFI_10MHz_IQvector_18dB_20000.txt"
+preprocessed = []
+pre_average = []
+drop_input = []
+reinforce_input = []
+reinforce_scale = []
+dead_input = []
 
-raw = np.loadtxt(fname, dtype='complex')
+fname = "D:/SNN_dataset/Demodulation/36Mbps/"\
+        "802.11_demodulation_36Mbps_21dB_10000_0.txt"
+
+raw = np.loadtxt(fname, dtype='float32')
 
 for line in raw:
     line_data = line[0:len(line) - 1]
-    line_label = line[-1]
-    dcr = detrend(line_data - np.mean(line_data))
-    fft1 = np.fft.fft(dcr[16:80]) / 64
-    fft2 = np.fft.fft(dcr[96:160]) / 64
-    fft3 = np.fft.fft(dcr[192:256]) / 64
-    fft4 = np.fft.fft(dcr[256:len(dcr)]) / 64
-    fft = np.concatenate((fft1, fft2, fft3, fft4), axis=0)
-    scaled = intensity * np.abs(fft)
+    bin0 = '0b'
+    bit = str(int(line[-1]))
+    line_label = int(bin0 + bit, 2)
+    i = line_data[0]
+    q = line_data[1]
 
+    if 0 < i < 0.5 and 0 < q < 0.5:         # Quadrant 1
+        decode = np.eye(N=1, M=16, k=0).squeeze()
+    elif 1.5 > i >= 0.5 > q > 0:
+        decode = np.eye(N=1, M=16, k=1).squeeze()
+    elif 1.5 > i >= 0.5 and 1.5 > q >= 0.5:
+        decode = np.eye(N=1, M=16, k=2).squeeze()
+    elif 0 < i < 0.5 <= q < 1.5:
+        decode = np.eye(N=1, M=16, k=3).squeeze()
+
+    elif -0.5 < i < 0 < q < 0.5:            # Quadrant 2
+        decode = np.eye(N=1, M=16, k=4).squeeze()
+    elif -1.5 < i <= -0.5 and 0 < q < 0.5:
+        decode = np.eye(N=1, M=16, k=5).squeeze()
+    elif -1.5 < i <= -0.5 and 0.5 <= q < 1.5:
+        decode = np.eye(N=1, M=16, k=6).squeeze()
+    elif -0.5 < i < 0 and 1.5 > q >= 0.5:
+        decode = np.eye(N=1, M=16, k=7).squeeze()
+
+    elif -0.5 < i < 0 and -0.5 < q < 0:     # Quadrant 3
+        decode = np.eye(N=1, M=16, k=8).squeeze()
+    elif -1.5 < i <= -0.5 < q < 0:
+        decode = np.eye(N=1, M=16, k=9).squeeze()
+    elif -1.5 < i <= -0.5 and -1.5 < q <= -0.5:
+        decode = np.eye(N=1, M=16, k=10).squeeze()
+    elif 0 > i > -0.5 >= q > -1.5:
+        decode = np.eye(N=1, M=16, k=11).squeeze()
+
+    elif 0.5 > i > 0 > q > -0.5:            # Quadrant 4
+        decode = np.eye(N=1, M=16, k=12).squeeze()
+    elif 1.5 > i >= 0.5 and -0.5 < q < 0:
+        decode = np.eye(N=1, M=16, k=13).squeeze()
+    elif 1.5 > i >= 0.5 and -1.5 < q <= -0.5:
+        decode = np.eye(N=1, M=16, k=14).squeeze()
+    else:
+        decode = np.eye(N=1, M=16, k=15).squeeze()
+
+    scaled = intensity * decode
+    preprocessed.append(scaled)
     classes.append(line_label)
     lbl = torch.tensor(line_label).long()
 
@@ -187,11 +245,38 @@ for line in raw:
 train_data, test_data = train_test_split(wave_data, test_size=test_ratio)
 
 n_classes = (np.unique(classes)).size
+if adaptive_network:
+    n_neurons = 4 * n_classes
+n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 
 n_train = len(train_data)
 n_test = len(test_data)
 
 num_inputs = train_data[-1]["encoded_image"].shape[1]
+pre_size = int(np.shape(preprocessed)[0] / n_classes)
+
+if adaptive_dropconnect:
+    for j in range(n_classes):
+        pre_average.append(np.mean(preprocessed[j * pre_size:(j + 1) * pre_size], axis=0))
+        drop_input.append(np.argwhere(pre_average[j] < np.sort(pre_average[j])[0:drop_num + 1][-1]).flatten())
+
+if adaptive_reinforceconnect:
+    for j in range(n_classes):
+        pre_average.append(np.mean(preprocessed[j * pre_size:(j + 1) * pre_size], axis=0))
+        values = np.sort(pre_average[j])[::-1][:reinforce_num]
+        reinforce_scale.append(values / np.max(values))
+        reinforce_input.append(
+            np.argwhere(pre_average[j] > np.sort(pre_average[j])[0:num_inputs - reinforce_num][-1]).flatten())
+
+if dead_synapse:
+    for i in range(dead_synapse_exc_num):
+        dead_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
+
+reinforce_input *= int(np.ceil(n_neurons / n_classes))
+reinforce_scale *= int(np.ceil(n_neurons / n_classes))
+drop_input *= int(np.ceil(n_neurons / n_classes))
+template_exc = np.arange(n_neurons)
+dead_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
 
 print(n_train, n_test, n_classes)
 
@@ -258,10 +343,6 @@ voltage_axes, voltage_ims = None, None
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
-dead_index_input = []
-for i in range(dead_synapse_exc_num):
-    dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
 
 # Train the network.
 print("\nBegin training.\n")
@@ -311,7 +392,7 @@ for epoch in range(n_epochs):
                 100
                 * torch.sum(label_tensor.long() == proportion_pred).item()
                 / len(label_tensor)
-                # Match a label of a neuron that has the proportion of the highest spikes rate with a data's real label.
+                # Match a label of a neuron that has the proportion of the highest spike rate with a data's real label.
             )
 
             print(
@@ -350,7 +431,10 @@ for epoch in range(n_epochs):
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
+                    drop_synapse=adaptive_dropconnect, drop_index_input=drop_input, drop_index_exc=template_exc,
+                    reinforce_synapse=adaptive_reinforceconnect, reinforce_scale=reinforce_scale,
+                    reinforce_index_input=reinforce_input, reinforce_index_exc=template_exc,
+                    dead_synapse=dead_synapse, dead_index_input=dead_input, dead_index_exc=dead_exc)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -366,8 +450,8 @@ for epoch in range(n_epochs):
                                     shape[1]).sum(0).view(int(np.sqrt(num_inputs)), int(np.sqrt(num_inputs)))
             input_exc_weights = network.connections[("X", "Ae")].w
             square_weights = get_square_weights(
-               input_exc_weights.view(train_data[-1]["encoded_image"].
-                                      shape[1], n_neurons), n_sqrt, int(np.sqrt(num_inputs))
+                input_exc_weights.view(train_data[-1]["encoded_image"].
+                                       shape[1], n_neurons), n_sqrt, int(np.sqrt(num_inputs))
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
@@ -377,7 +461,7 @@ for epoch in range(n_epochs):
             )
             spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
             weights_im = plot_weights(square_weights, im=weights_im)
-            assigns_im = plot_assignments(square_assignments, im=assigns_im)
+            assigns_im = plot_assignments(square_assignments, classes=np.unique(classes), im=assigns_im)
             perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
             voltage_ims, voltage_axes = plot_voltages(
                 voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line"
@@ -395,7 +479,6 @@ print("Training complete.\n")
 
 # Sequence of accuracy estimates.
 accuracy = {"all": 0, "proportion": 0}
-confusion_matrix = {"TP": 0, "FP": 0, "TN": 0, "FN": 0}
 
 # Record spikes during the simulation.
 spike_record = torch.zeros((1, int(time / dt), n_neurons), device=device)
@@ -422,7 +505,10 @@ for step, batch in enumerate(test_data):
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                 vLTP=vLTP, vLTD=vLTD, beta=beta,
-                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
+                drop_synapse=adaptive_dropconnect, drop_index_input=drop_input, drop_index_exc=template_exc,
+                intense_synapse=adaptive_reinforceconnect, intense_scale=reinforce_scale,
+                intense_index_input=reinforce_input, intense_index_exc=template_exc,
+                dead_synapse=dead_synapse, dead_index_input=dead_input, dead_index_exc=dead_exc)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
@@ -462,24 +548,6 @@ for step, batch in enumerate(test_data):
     accuracy["all"] += float(torch.sum(label_tensor.long() == all_activity_pred).item())
     accuracy["proportion"] += float(torch.sum(label_tensor.long() == proportion_pred).item())
 
-    if gpu:
-        P_tensor = torch.zeros(label_tensor.long().shape).long().cuda()      # label 0
-        N_tensor = torch.ones(label_tensor.long().shape).long().cuda()     # label 1
-
-    else:
-        P_tensor = torch.ones(label_tensor.long().shape).long()     # label 1
-        N_tensor = torch.zeros(label_tensor.long().shape).long()    # label 0
-
-    TP = float(torch.sum((all_activity_pred == P_tensor) & (label_tensor.long() == P_tensor)).item())
-    FP = float(torch.sum((all_activity_pred == P_tensor) & (label_tensor.long() == N_tensor)).item())
-    TN = float(torch.sum((all_activity_pred == N_tensor) & (label_tensor.long() == N_tensor)).item())
-    FN = float(torch.sum((all_activity_pred == N_tensor) & (label_tensor.long() == P_tensor)).item())
-
-    confusion_matrix["TP"] += TP
-    confusion_matrix["FP"] += FP
-    confusion_matrix["TN"] += TN
-    confusion_matrix["FN"] += FN
-
     network.reset_state_variables()  # Reset state variables.
     pbar.set_description_str("Test progress: ")
     pbar.update()
@@ -487,9 +555,5 @@ for step, batch in enumerate(test_data):
     print("\nAll activity accuracy: %.2f" % (accuracy["all"] / n_test * 100))
     print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test * 100))
 
-print(confusion_matrix)
-print("Probability of Detection: %.4f" % (confusion_matrix["TP"] / (confusion_matrix["TP"] + confusion_matrix["FN"])))
-print("False Negative Probability: %.4f" % (confusion_matrix["FN"] / (confusion_matrix["TP"] + confusion_matrix["FN"])))
-print("False Positive Probability: %.4f" % (confusion_matrix["FP"] / (confusion_matrix["FP"] + confusion_matrix["TN"])))
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Testing complete.\n")
