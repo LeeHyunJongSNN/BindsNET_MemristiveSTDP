@@ -47,14 +47,14 @@ parser.add_argument("--thresh", type=float, default=-52.0)
 parser.add_argument("--theta_plus", type=float, default=0.01)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=400)     # normal: 500 AST: 400
+parser.add_argument("--intensity", type=float, default=400)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
 parser.add_argument("--test_ratio", type=float, default=0.985)
 parser.add_argument("--random_G", type=bool, default=True)
-parser.add_argument("--vLTP", type=float, default=0.0)
-parser.add_argument("--vLTD", type=float, default=0.0)
+parser.add_argument("--vLTP", type=float, default=3.0)
+parser.add_argument("--vLTD", type=float, default=-3.0)
 parser.add_argument("--beta", type=float, default=1.0)
 parser.add_argument("--ST", type=bool, default=True)
 parser.add_argument("--AST", type=bool, default=True)
@@ -67,8 +67,8 @@ parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
+parser.add_argument("--spare_gpu", dest="spare_gpu", default=1)
+parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
@@ -186,14 +186,20 @@ reinforce_ref = []
 dead_input = []
 
 fname = "/home/leehyunjong/Dataset_2.4GHz/1kHz_10/vector/"\
-        "(sine+sawtooth)_1kHz_10_vector_0dB_20000.txt"
+        "(sine+sawtooth)_1kHz_10_vector_9dB_20000.txt"
 
 # Regulate intensity according to nonlinearity
 if ST and vLTD <= 0 < vLTP:
     if 'square' in fname:
-        intensity = intensity * 0.75
+        intensity = intensity * 0.9
     if '(sine+sawtooth)' in fname and DS_exc_num == 2:
-        intensity = intensity * 0.75
+        intensity = intensity * 0.9
+
+elif ST and vLTP < 0:
+    if 'square' in fname:
+        intensity = intensity * 0.9
+    if '(sine+sawtooth)' in fname and DS_exc_num == 2:
+        intensity = intensity * 0.9
 
 raw = np.loadtxt(fname, dtype='complex')
 
@@ -234,8 +240,12 @@ if ST:
         drop_input.append(np.argwhere(pre_average[i] < np.sort(pre_average[i])[0:drop_num + 1][-1]).flatten())
         reinforce_input.append(
             np.argwhere(pre_average[i] > np.sort(pre_average[i])[0:num_inputs - reinforce_num][-1]).flatten())
-        values = np.sort(pre_average[i])[::-1][:reinforce_num]
-        reinforce_ref.append(values / np.max(values))
+
+        if reinforce_num != 0:
+            values = np.sort(pre_average[i])[::-1][:reinforce_num]
+            reinforce_ref.append(values / np.max(values))
+        else:
+            reinforce_ref.append([])
 
 if DS:
     for i in range(DS_exc_num):
@@ -310,8 +320,8 @@ perf_ax = None
 voltage_axes, voltage_ims = None, None
 
 # Random variables
-rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons).to('cuda') + 0.5
-rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons).to('cuda')
+rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
 
 # Train the network.
 print("\nBegin training.\n")
