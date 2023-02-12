@@ -272,7 +272,7 @@ class MemristiveSTDP_Simplified(LearningRule):
                 for j in drop_index_input[i]:
                     self.connection.w[j, template_exc[i]] = 0
                 for j in reinforce_index_input[i]:
-                    if self.connection.w[j, template_exc[i]] <= gmax[j, template_exc[i]] * 0.5:
+                    if self.connection.w[j, template_exc[i]] <= gmax[j, template_exc[i]] * 0.4:
                         self.connection.w[j, template_exc[i]] = gmax[j, template_exc[i]] * \
                                                                 reinforce_ref[int(template_exc[i])][
                                                                     int(np.where(
@@ -659,7 +659,7 @@ class MemristiveSTDP(LearningRule):
                 for j in drop_index_input[i]:
                     self.connection.w[j, template_exc[i]] = 0
                 for j in reinforce_index_input[i]:
-                    if self.connection.w[j, template_exc[i]] <= gmax[j, template_exc[i]] * 0.5:
+                    if self.connection.w[j, template_exc[i]] <= gmax[j, template_exc[i]] * 0.4:
                         self.connection.w[j, template_exc[i]] = gmax[j, template_exc[i]] * \
                                                                 reinforce_ref[int(template_exc[i])][
                                                                     int(np.where(
@@ -1247,12 +1247,12 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                 for j in drop_index_input[i]:
                     self.connection.w[j, template_exc[i]] = 0
                 for j in reinforce_index_input[i]:
-                    if self.connection.w[j, template_exc[i]] <= gmax[j, template_exc[i]] * 0.5:
+                    if self.connection.w[j, template_exc[i]] <= gmax[j, template_exc[i]] * 0.4:
                         self.connection.w[j, template_exc[i]] = gmax[j, template_exc[i]] * \
-                                                                     reinforce_ref[int(template_exc[i])][
-                                                                         int(np.where(
-                                                                             j == reinforce_index_input[i])[
-                                                                                 0])] * 0.5
+                                                                    reinforce_ref[int(template_exc[i])][
+                                                                        int(np.where(
+                                                                            j == reinforce_index_input[i])[
+                                                                                0])] * 0.
 
         # Dead synpase simulation
         if DS:
