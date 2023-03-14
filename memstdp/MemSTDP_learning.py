@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
+from scipy.stats import bernoulli
+from sklearn.preprocessing import minmax_scale
 
 from bindsnet.utils import im2col_indices
 from ..network.nodes import SRM0Nodes
@@ -237,6 +239,7 @@ class MemristiveSTDP_Simplified(LearningRule):
         grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
         template_exc = kwargs.get('template_exc')  # ST excitatory neuron num
         ST = kwargs.get('ST')  # ST useage
+        ADC = kwargs.get('ADC')  # ADC useage
         DS = kwargs.get("DS")  # DS simulation
 
         # Random Conductance uperbound and underbound
@@ -518,6 +521,20 @@ class MemristiveSTDP_Simplified(LearningRule):
                                                                                        i, k.item()]) * (
                                                                                               1 - np.exp(vltd / 256))
 
+
+        # Adapitve Drop Connect
+        if ADC:
+            p = minmax_scale(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size),
+                             feature_range=(0.999, 1)).reshape(X_size, Ae_size)
+            m = torch.zeros(X_size, Ae_size).to('cuda')
+
+            for i in range(X_size):
+                for j in range(Ae_size):
+                    m[i, j] = int(bernoulli.rvs(p[i, j], size=1))
+
+            self.connection.w *= m
+
+
         super().update()
 
 
@@ -624,6 +641,7 @@ class MemristiveSTDP(LearningRule):
         grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
         template_exc = kwargs.get('template_exc')  # ST excitatory neuron num
         ST = kwargs.get('ST')  # ST useage
+        ADC = kwargs.get('ADC')  # ADC useage
         DS = kwargs.get("DS")  # DS simulation
 
         # Random Conductance uperbound and underbound
@@ -957,6 +975,20 @@ class MemristiveSTDP(LearningRule):
                                                                                             i, k.item()]) * (
                                                                                                1 - np.exp(vltd / 256))
 
+
+        # Adapitve Drop Connect
+        if ADC:
+            p = minmax_scale(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size),
+                             feature_range=(0.999, 1)).reshape(X_size, Ae_size)
+            m = torch.zeros(X_size, Ae_size).to('cuda')
+
+            for i in range(X_size):
+                for j in range(Ae_size):
+                    m[i, j] = int(bernoulli.rvs(p[i, j], size=1))
+
+            self.connection.w *= m
+
+
         super().update()
 
 
@@ -1212,6 +1244,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
         template_exc = kwargs.get('template_exc')  # ST excitatory neuron num
         ST = kwargs.get('ST')  # ST useage
+        ADC = kwargs.get('ADC')  # ADC useage
         DS = kwargs.get("DS")  # DS simulation
 
         # Random Conductance uperbound and underbound
@@ -1232,7 +1265,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                 dead_index_input = kwargs.get('dead_index_input')
                 dead_index_exc = kwargs.get('dead_index_exc')
                 if sum(dead_index_exc) % 2 == 0 and ST:
-                    l = len(drop_index_input) / 2
+                    l = int(len(drop_index_input) / 2)
                     tmp1 = [drop_index_input[0]] * l
                     tmp2 = [drop_index_input[1]] * l
                     drop_index_input = tmp1 + tmp2
@@ -1252,7 +1285,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                     reinforce_ref[int(template_exc[i])][
                                                                         int(np.where(
                                                                             j == reinforce_index_input[i])[
-                                                                                0])] * 0.
+                                                                                0])] * 0.5
 
         # Dead synpase simulation
         if DS:
@@ -1601,6 +1634,19 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                                                1 - np.exp(vltd / 256))
 
 
+        # Adapitve Drop Connect
+        if ADC:
+            p = minmax_scale(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size),
+                             feature_range=(0.999, 1)).reshape(X_size, Ae_size)
+            m = torch.zeros(X_size, Ae_size).to('cuda')
+
+            for i in range(X_size):
+                for j in range(Ae_size):
+                    m[i, j] = int(bernoulli.rvs(p[i, j], size=1))
+
+            self.connection.w *= m
+
+
         super().update()
 
 
@@ -1697,16 +1743,17 @@ class MemristiveSTDP_KIST(LearningRule):
         # Dead synapses variables
         dead_index_input = []
         dead_index_exc = []
-        dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
+        DS = kwargs.get('DS')  # Dead synapses simulation
 
         # Dead synpase simulation
-        if dead_synapses:
+        if DS:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
 
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
                     self.connection.w[j, dead_index_exc[i]] = 0
+
 
         # Weight update with memristive characteristc
         if torch.numel(update_index_and_time) == 0:
