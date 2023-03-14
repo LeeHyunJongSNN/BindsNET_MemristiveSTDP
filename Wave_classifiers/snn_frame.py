@@ -56,9 +56,9 @@ parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
-parser.add_argument("--dead_synapse", type=bool, default=False)
-parser.add_argument("--dead_synapse_input_num", type=int, default=4)
-parser.add_argument("--dead_synapse_exc_num", type=int, default=4)
+parser.add_argument("--DS", type=bool, default=False)
+parser.add_argument("--DS_input_num", type=int, default=4)
+parser.add_argument("--DS_exc_num", type=int, default=4)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -89,9 +89,9 @@ random_G = args.random_G
 vLTP = args.vLTP
 vLTD = args.vLTD
 beta = args.beta
-dead_synapse = args.dead_synapse
-dead_synapse_input_num = args.dead_synapse_input_num
-dead_synapse_exc_num = args.dead_synapse_exc_num
+DS = args.DS
+DS_input_num = args.DS_input_num
+DS_exc_num = args.DS_exc_num
 train = args.train
 train_plot = args.train_plot
 test_plot = args.test_plot
@@ -124,7 +124,7 @@ print("Random G value =", random_G)
 print("vLTP =", vLTP)
 print("vLTD =", vLTD)
 print("beta =", beta)
-print("dead synapse =", dead_synapse)
+print("dead synapse =", DS)
 
 # Determines number of workers to use
 if n_workers == -1:
@@ -161,7 +161,7 @@ test_data = []
 wave_data = []
 classes = []
 
-fname = "D:/SNN_dataset/Wi-Fi_Preambles/"\
+fname = "/home/leehyunjong/Wi-Fi_Preambles/"\
         "WIFI_10MHz_IQvector_18dB_20000.txt"
 
 raw = np.loadtxt(fname, dtype='complex')
@@ -258,10 +258,10 @@ voltage_axes, voltage_ims = None, None
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
+dead_index_exc = random.sample(range(0, n_neurons), DS_exc_num)
 dead_index_input = []
-for i in range(dead_synapse_exc_num):
-    dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
+for i in range(DS_exc_num):
+    dead_index_input.append(random.sample(range(0, num_inputs), DS_input_num))
 
 # Train the network.
 print("\nBegin training.\n")
@@ -350,7 +350,7 @@ for epoch in range(n_epochs):
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
+                    dead_synapse=DS, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -422,7 +422,7 @@ for step, batch in enumerate(test_data):
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                 vLTP=vLTP, vLTD=vLTD, beta=beta,
-                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
+                dead_synapse=DS, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()

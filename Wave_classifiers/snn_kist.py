@@ -1,6 +1,7 @@
 import os
 import gc
 import torch
+import torch.nn as nn
 import argparse
 import random
 import numpy as np
@@ -9,6 +10,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import minmax_scale
 
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, RepeatEncoder
 from bindsnet.memstdp import RankOrderTTFSEncoder, LinearRateEncoder
@@ -37,8 +39,6 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=random_seed)
 parser.add_argument("--n_neurons", type=int, default=3)
-parser.add_argument("--n_epochs", type=int, default=1)
-parser.add_argument("--n_test", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=22.5)
@@ -53,7 +53,7 @@ parser.add_argument("--intensity", type=float, default=1)
 parser.add_argument("--encoder_type", dest="encoder_type", default="LinearRateEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=0.9)
+parser.add_argument("--test_ratio", type=float, default=0.99)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
@@ -73,8 +73,6 @@ args = parser.parse_args()
 seed = args.seed
 n_neurons = args.n_neurons
 n_epochs = args.n_epochs
-n_test = args.n_test
-n_train = args.n_train
 n_workers = args.n_workers
 exc = args.exc
 inh = args.inh
@@ -163,10 +161,12 @@ test_data = []
 
 wave_data = []
 classes = []
+conv1d = nn.Conv1d(1, 1, 3, stride=2, padding=1, bias=False)
 
 fname = " "
 
-for fname in ["/home/leehyunjong/Dataset_Simple/square+sawtooth_5.txt"]:
+for fname in ["/home/leehyunjong/Dataset_2.4GHz/1kHz_10/vector/"
+              "(sine+sawtooth)_1kHz_10_vector_0dB_20000.txt"]:
 
     print(fname)
     f = open(fname, "r", encoding='utf-8-sig')
@@ -178,14 +178,17 @@ for fname in ["/home/leehyunjong/Dataset_Simple/square+sawtooth_5.txt"]:
         if line[0] == "#":
             continue
 
-        linedata = [float(x) for x in line.split()]
+        linedata = [complex(x) for x in line.split()]
         if len(linedata) == 0:
             continue
 
-        linedata_labelremoved = [x for x in linedata[0:len(linedata) - 1]]
-        linedata_intensity = [intensity * x for x in linedata_labelremoved[0:len(linedata_labelremoved)]]
+        linedata_abs = [abs(x) for x in linedata[0:len(linedata) - 1]]
+        linedata_conv = conv1d(torch.tensor(linedata_abs).view(1, 1, -1)).view(-1).tolist()
 
-        cl = int(linedata[-1])
+        linedata_norm = minmax_scale(linedata_conv).tolist()
+        linedata_intensity = [intensity * x for x in linedata_norm[0:len(linedata_norm)]]
+
+        cl = complex(linedata[-1])
         classes.append(cl)
         lbl = torch.tensor([cl])
 

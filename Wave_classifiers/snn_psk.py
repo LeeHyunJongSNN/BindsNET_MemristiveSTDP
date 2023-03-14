@@ -51,24 +51,24 @@ parser.add_argument("--intensity", type=float, default=2048)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=0.99)
+parser.add_argument("--test_ratio", type=float, default=0.5)
 parser.add_argument("--random_G", type=bool, default=True)
 parser.add_argument("--vLTP", type=float, default=0.0)
 parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
-parser.add_argument("--adaptive_dropconnect", type=bool, default=False)
-parser.add_argument("--adaptive_reinforceconnect", type=bool, default=False)
-parser.add_argument("--drop_num", type=int, default=1)
-parser.add_argument("--reinforce_num", type=int, default=1)
-parser.add_argument("--dead_synapse", type=bool, default=False)
-parser.add_argument("--dead_synapse_input_num", type=int, default=1)
-parser.add_argument("--dead_synapse_exc_num", type=int, default=1)
+parser.add_argument("--ST", type=bool, default=True)
+parser.add_argument("--AST", type=bool, default=True)
+parser.add_argument("--drop_num", type=int, default=2)
+parser.add_argument("--reinforce_num", type=int, default=2)
+parser.add_argument("--DS", type=bool, default=False)
+parser.add_argument("--DS_input_num", type=int, default=1)
+parser.add_argument("--DS_exc_num", type=int, default=1)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
+parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
@@ -94,11 +94,11 @@ random_G = args.random_G
 vLTP = args.vLTP
 vLTD = args.vLTD
 beta = args.beta
-adaptive_dropconnect = args.adaptive_dropconnect
-adaptive_reinforceconnect = args.adaptive_reinforceconnect
-dead_synapse = args.dead_synapse
-dead_synapse_input_num = args.dead_synapse_input_num
-dead_synapse_exc_num = args.dead_synapse_exc_num
+ST = args.ST
+AST = args.AST
+DS = args.DS
+DS_input_num = args.DS_input_num
+DS_exc_num = args.DS_exc_num
 drop_num = args.drop_num
 reinforce_num = args.reinforce_num
 train = args.train
@@ -132,17 +132,17 @@ print("Random G value =", random_G)
 print("vLTP =", vLTP)
 print("vLTD =", vLTD)
 print("beta =", beta)
-print("drop connect =", adaptive_dropconnect)
-print("reinforce connect =", adaptive_reinforceconnect)
-print("dead synapse =", dead_synapse)
+print("ST =", ST)
+print("AST =", AST)
+print("dead synapse =", DS)
 
-if adaptive_dropconnect:
-    print("drop synapse num =", drop_num)
-if adaptive_reinforceconnect:
-    print("intense synapse num =", reinforce_num)
-if dead_synapse:
-    print("%d dead synapses per %d exc neurons" % (dead_synapse_input_num, dead_synapse_exc_num))
+if not AST:
+    if ST:
+        print("drop synapse num =", drop_num)
+        print("reinforce synapse num =", reinforce_num)
 
+if DS:
+    print("%d dead synapses per %d exc neurons" % (DS_input_num, DS_exc_num))
 
 # Determines number of workers to use
 if n_workers == -1:
@@ -181,11 +181,11 @@ preprocessed = []
 pre_average = []
 drop_input = []
 reinforce_input = []
-reinforce_scale = []
+reinforce_ref = []
 dead_input = []
 
-fname = "D:/SNN_dataset/Demodulation/6Mbps/"\
-        "802.11_demodulation_6Mbps_21dB_10000_0.txt"
+fname = "/home/leehyunjong/Demodulation/6Mbps/"\
+        "802.11_demodulation_6Mbps_0dB_10000_0.txt"
 
 raw = np.loadtxt(fname, dtype='float32')
 
@@ -220,29 +220,31 @@ n_test = len(test_data)
 
 num_inputs = train_data[-1]["encoded_image"].shape[1]
 pre_size = int(np.shape(preprocessed)[0] / n_classes)
+entire = np.sort(np.mean(preprocessed, axis=0))
 
-if adaptive_dropconnect:
-    for j in range(n_classes):
-        pre_average.append(np.mean(preprocessed[j * pre_size:(j + 1) * pre_size], axis=0))
-        drop_input.append(np.argwhere(pre_average[j] < np.sort(pre_average[j])[0:drop_num + 1][-1]).flatten())
+if ST:
+    for i in range(n_classes):
+        pre_average.append(np.mean(preprocessed[i * pre_size:(i + 1) * pre_size], axis=0))
 
-if adaptive_reinforceconnect:
-    for j in range(n_classes):
-        pre_average.append(np.mean(preprocessed[j * pre_size:(j + 1) * pre_size], axis=0))
-        values = np.sort(pre_average[j])[::-1][:reinforce_num]
-        reinforce_scale.append(values / np.max(values))
+        if AST:
+            drop_num = len(np.where(pre_average[i] <= entire[int(num_inputs * 0.3) - 1])[0])
+            reinforce_num = len(np.where(pre_average[i] >= entire[int(num_inputs) - 1])[0])
+
+        drop_input.append(np.argwhere(pre_average[i] < np.sort(pre_average[i])[0:drop_num + 1][-1]).flatten())
         reinforce_input.append(
-            np.argwhere(pre_average[j] > np.sort(pre_average[j])[0:num_inputs - reinforce_num][-1]).flatten())
+            np.argwhere(pre_average[i] > np.sort(pre_average[i])[0:num_inputs - reinforce_num][-1]).flatten())
+        values = np.sort(pre_average[i])[::-1][:reinforce_num]
+        reinforce_ref.append(values / np.max(values))
 
-if dead_synapse:
-    for i in range(dead_synapse_exc_num):
-        dead_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
+if DS:
+    for i in range(DS_exc_num):
+        dead_input.append(random.sample(range(0, num_inputs), DS_input_num))
 
 reinforce_input *= int(np.ceil(n_neurons / n_classes))
-reinforce_scale *= int(np.ceil(n_neurons / n_classes))
+reinforce_ref *= int(np.ceil(n_neurons / n_classes))
 drop_input *= int(np.ceil(n_neurons / n_classes))
 template_exc = np.arange(n_neurons)
-dead_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
+dead_exc = random.sample(range(0, n_neurons), DS_exc_num)
 
 print(n_train, n_test, n_classes)
 
@@ -396,11 +398,9 @@ for epoch in range(n_epochs):
         t_record = []
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
-                    vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    drop_synapse=adaptive_dropconnect, drop_index_input=drop_input, drop_index_exc=template_exc,
-                    reinforce_synapse=adaptive_reinforceconnect, reinforce_scale=reinforce_scale,
-                    reinforce_index_input=reinforce_input, reinforce_index_exc=template_exc,
-                    dead_synapse=dead_synapse, dead_index_input=dead_input, dead_index_exc=dead_exc)
+                    vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS,
+                    drop_index_input=drop_input, reinforce_ref=reinforce_ref, reinforce_index_input=reinforce_input,
+                    dead_index_input=dead_input, dead_index_exc=dead_exc)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -427,7 +427,7 @@ for epoch in range(n_epochs):
             )
             spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
             weights_im = plot_weights(square_weights, im=weights_im)
-            assigns_im = plot_assignments(square_assignments, im=assigns_im)
+            assigns_im = plot_assignments(square_assignments, classes=np.unique(classes), im=assigns_im)
             perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
             voltage_ims, voltage_axes = plot_voltages(
                 voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line"
@@ -470,11 +470,9 @@ for step, batch in enumerate(test_data):
     t_record = []
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
-                vLTP=vLTP, vLTD=vLTD, beta=beta,
-                drop_synapse=adaptive_dropconnect, drop_index_input=drop_input, drop_index_exc=template_exc,
-                intense_synapse=adaptive_reinforceconnect, intense_scale=reinforce_scale,
-                intense_index_input=reinforce_input, intense_index_exc=template_exc,
-                dead_synapse=dead_synapse, dead_index_input=dead_input, dead_index_exc=dead_exc)
+                vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS,
+                drop_index_input=drop_input, reinforce_ref=reinforce_ref, reinforce_index_input=reinforce_input,
+                dead_index_input=dead_input, dead_index_exc=dead_exc)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()

@@ -9,9 +9,10 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import minmax_scale
 
 from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, RepeatEncoder
-from bindsnet.memstdp import RankOrderTTFSEncoder, LinearRateEncoder
+from bindsnet.memstdp import RankOrderTTFSEncoder, RankOrderTTASEncoder
 from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP, KISTnetwork_MemSTDP
 from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified, MemristiveSTDP_TimeProportion
 from bindsnet.network.monitors import Monitor
@@ -35,45 +36,45 @@ random_seed = random.randint(0, 100)
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--seed", type=int, default=random_seed)
-parser.add_argument("--adaptive_network", type=bool, default=True)
-parser.add_argument("--n_neurons", type=int, default=128)
+parser.add_argument("--n_neurons", type=int, default=4)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=17.5)
 parser.add_argument("--rest", type=float, default=-65.0)
 parser.add_argument("--reset", type=float, default=-60.0)
-parser.add_argument("--thresh", type=float, default=-56.0)
-parser.add_argument("--theta_plus", type=float, default=0.05)
+parser.add_argument("--thresh", type=float, default=-52.0)
+parser.add_argument("--theta_plus", type=float, default=0.01)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=2048)
-parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
+parser.add_argument("--intensity", type=float, default=1)      # 30~40
+parser.add_argument("--weight_scale", type=float, default=1.0)
+parser.add_argument("--encoder_type", dest="encoder_type", default="RankOrderTTASEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
 parser.add_argument("--test_ratio", type=float, default=0.5)
 parser.add_argument("--random_G", type=bool, default=True)
-parser.add_argument("--vLTP", type=float, default=0.0)
-parser.add_argument("--vLTD", type=float, default=0.0)
+parser.add_argument("--vLTP", type=float, default=3.0)
+parser.add_argument("--vLTD", type=float, default=3.0)
 parser.add_argument("--beta", type=float, default=1.0)
-parser.add_argument("--ST", type=bool, default=True)
-parser.add_argument("--AST", type=bool, default=True)
+parser.add_argument("--ST", type=bool, default=False)
+parser.add_argument("--AST", type=bool, default=False)
 parser.add_argument("--drop_num", type=int, default=2)
 parser.add_argument("--reinforce_num", type=int, default=2)
-parser.add_argument("--DS", type=bool, default=False)
-parser.add_argument("--DS_input_num", type=int, default=1)
-parser.add_argument("--DS_exc_num", type=int, default=1)
+parser.add_argument("--DS", type=bool, default=True)
+parser.add_argument("--DS_input_num", type=int, default=100)
+parser.add_argument("--DS_exc_num", type=int, default=2)
+parser.add_argument("--ADC", type=bool, default=False)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
+parser.set_defaults(train_plot=True, test_plot=False, gpu=True)
 
 args = parser.parse_args()
 
 seed = args.seed
-adaptive_network = args.adaptive_network
 n_neurons = args.n_neurons
 n_epochs = args.n_epochs
 n_workers = args.n_workers
@@ -86,6 +87,7 @@ theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
 intensity = args.intensity
+weight_scale = args.weight_scale
 encoder_type = args.encoder_type
 progress_interval = args.progress_interval
 update_interval = args.update_interval
@@ -101,6 +103,7 @@ DS_input_num = args.DS_input_num
 DS_exc_num = args.DS_exc_num
 drop_num = args.drop_num
 reinforce_num = args.reinforce_num
+ADC = args.ADC
 train = args.train
 train_plot = args.train_plot
 test_plot = args.test_plot
@@ -150,6 +153,8 @@ if n_workers == -1:
 
 print(n_workers, os.cpu_count() - 1)
 
+n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
+
 if encoder_type == "PoissonEncoder":
     encoder = PoissonEncoder(time=time, dt=dt)
 
@@ -159,11 +164,11 @@ elif encoder_type == "RankOrderEncoder":
 elif encoder_type == "RankOrderTTFSEncoder":
     encoder = RankOrderTTFSEncoder(time=time, dt=dt)
 
+elif encoder_type == "RankOrderTTASEncoder":
+    encoder = RankOrderTTASEncoder(time=time, dt=dt)
+
 elif encoder_type == "BernoulliEncoder":
     encoder = BernoulliEncoder(time=time, dt=dt)
-
-elif encoder_type == "LinearRateEncoder":
-    encoder = LinearRateEncoder(time=time, dt=dt)
 
 elif encoder_type == "RepeatEncoder":
     encoder = RepeatEncoder(time=time, dt=dt)
@@ -184,60 +189,25 @@ reinforce_input = []
 reinforce_ref = []
 dead_input = []
 
-fname = "/home/leehyunjong/Demodulation/24Mbps/"\
-        "802.11_demodulation_24Mbps_21dB_10000_0.txt"
+f_train = "/home/leehyunjong/Dataset_simple/H&V/"\
+              "Hill_Valley_without_noise_Training.txt"
+f_test = "/home/leehyunjong/Dataset_simple/H&V/"\
+                "Hill_Valley_without_noise_Testing.txt"
 
-raw = np.loadtxt(fname, dtype='float32')
+raw_train = np.loadtxt(f_train, dtype='float', delimiter=',')
+raw_test = np.loadtxt(f_test, dtype='float', delimiter=',')
+raw_whole = np.concatenate((raw_train, raw_test), axis=0)
 
-for line in raw:
-    line_data = line[0:len(line) - 1]
-    bin0 = '0b'
-    bit = str(int(line[-1]))
-    line_label = int(bin0 + bit, 2)
-    i = line_data[0]
-    q = line_data[1]
+for line in raw_whole:
+    data = line[0:len(line) - 1]
+    marker = line[-1]
+    norm = minmax_scale(data, feature_range=(0, 1))
 
-    if 0 < i < 0.5 and 0 < q < 0.5:         # Quadrant 1
-        decode = np.eye(N=1, M=16, k=0).squeeze()
-    elif 1.5 > i >= 0.5 > q > 0:
-        decode = np.eye(N=1, M=16, k=1).squeeze()
-    elif 1.5 > i >= 0.5 and 1.5 > q >= 0.5:
-        decode = np.eye(N=1, M=16, k=2).squeeze()
-    elif 0 < i < 0.5 <= q < 1.5:
-        decode = np.eye(N=1, M=16, k=3).squeeze()
+    preprocessed.append(norm)
+    classes.append(marker)
+    lbl = torch.tensor(marker).long()
 
-    elif -0.5 < i < 0 < q < 0.5:            # Quadrant 2
-        decode = np.eye(N=1, M=16, k=4).squeeze()
-    elif -1.5 < i <= -0.5 and 0 < q < 0.5:
-        decode = np.eye(N=1, M=16, k=5).squeeze()
-    elif -1.5 < i <= -0.5 and 0.5 <= q < 1.5:
-        decode = np.eye(N=1, M=16, k=6).squeeze()
-    elif -0.5 < i < 0 and 1.5 > q >= 0.5:
-        decode = np.eye(N=1, M=16, k=7).squeeze()
-
-    elif -0.5 < i < 0 and -0.5 < q < 0:     # Quadrant 3
-        decode = np.eye(N=1, M=16, k=8).squeeze()
-    elif -1.5 < i <= -0.5 < q < 0:
-        decode = np.eye(N=1, M=16, k=9).squeeze()
-    elif -1.5 < i <= -0.5 and -1.5 < q <= -0.5:
-        decode = np.eye(N=1, M=16, k=10).squeeze()
-    elif 0 > i > -0.5 >= q > -1.5:
-        decode = np.eye(N=1, M=16, k=11).squeeze()
-
-    elif 0.5 > i > 0 > q > -0.5:            # Quadrant 4
-        decode = np.eye(N=1, M=16, k=12).squeeze()
-    elif 1.5 > i >= 0.5 and -0.5 < q < 0:
-        decode = np.eye(N=1, M=16, k=13).squeeze()
-    elif 1.5 > i >= 0.5 and -1.5 < q <= -0.5:
-        decode = np.eye(N=1, M=16, k=14).squeeze()
-    else:
-        decode = np.eye(N=1, M=16, k=15).squeeze()
-
-    scaled = intensity * decode
-    preprocessed.append(scaled)
-    classes.append(line_label)
-    lbl = torch.tensor(line_label).long()
-
+    scaled = intensity * norm
     converted = torch.tensor(scaled, dtype=torch.float32)
     encoded = encoder.enc(datum=converted, time=time, dt=dt)
     wave_data.append({"encoded_image": encoded, "label": lbl})
@@ -245,9 +215,6 @@ for line in raw:
 train_data, test_data = train_test_split(wave_data, test_size=test_ratio)
 
 n_classes = (np.unique(classes)).size
-if adaptive_network:
-    n_neurons = 4 * n_classes
-n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 
 n_train = len(train_data)
 n_test = len(test_data)
@@ -267,16 +234,20 @@ if ST:
         drop_input.append(np.argwhere(pre_average[i] < np.sort(pre_average[i])[0:drop_num + 1][-1]).flatten())
         reinforce_input.append(
             np.argwhere(pre_average[i] > np.sort(pre_average[i])[0:num_inputs - reinforce_num][-1]).flatten())
-        values = np.sort(pre_average[i])[::-1][:reinforce_num]
-        reinforce_ref.append(values / np.max(values))
+
+        if reinforce_num != 0:
+            values = np.sort(pre_average[i])[::-1][:reinforce_num]
+            reinforce_ref.append(values / np.max(values))
+        else:
+            reinforce_ref.append([])
 
 if DS:
     for i in range(DS_exc_num):
         dead_input.append(random.sample(range(0, num_inputs), DS_input_num))
 
+drop_input *= int(np.ceil(n_neurons / n_classes))
 reinforce_input *= int(np.ceil(n_neurons / n_classes))
 reinforce_ref *= int(np.ceil(n_neurons / n_classes))
-drop_input *= int(np.ceil(n_neurons / n_classes))
 template_exc = np.arange(n_neurons)
 dead_exc = random.sample(range(0, n_neurons), DS_exc_num)
 
@@ -293,9 +264,9 @@ network = DiehlAndCook2015_MemSTDP(
     thresh=thresh,
     update_rule=MemristiveSTDP_TimeProportion,
     dt=dt,
-    norm=num_inputs / 10,
+    norm=num_inputs / 10 * weight_scale,
     theta_plus=theta_plus,
-    inpt_shape=(1, int(np.sqrt(num_inputs)), int(np.sqrt(num_inputs))),
+    inpt_shape=(10, 10, 1),
 )
 
 # Directs network to GPU
@@ -360,8 +331,7 @@ for epoch in range(n_epochs):
         if step > n_train:
             break
         # Get next input sample.
-        inputs = {"X": batch["encoded_image"].view(int(time / dt), 1, 1, int(np.sqrt(num_inputs)),
-                                                   int(np.sqrt(num_inputs)))}
+        inputs = {"X": batch["encoded_image"].view(int(time / dt), 1, 10, 10, 1)}
         if gpu:
             inputs = {k: v.cuda() for k, v in inputs.items()}
 
@@ -432,7 +402,7 @@ for epoch in range(n_epochs):
         t_record = []
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
-                    vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS,
+                    vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS, ADC=ADC,
                     drop_index_input=drop_input, reinforce_ref=reinforce_ref, reinforce_index_input=reinforce_input,
                     dead_index_input=dead_input, dead_index_exc=dead_exc)
 
@@ -446,12 +416,10 @@ for epoch in range(n_epochs):
         # Optionally plot various simulation information.
         if train_plot:
             image = batch["encoded_image"].view(num_inputs, time)
-            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].
-                                    shape[1]).sum(0).view(int(np.sqrt(num_inputs)), int(np.sqrt(num_inputs)))
+            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(10, 10)
             input_exc_weights = network.connections[("X", "Ae")].w
             square_weights = get_square_weights(
-                input_exc_weights.view(train_data[-1]["encoded_image"].
-                                       shape[1], n_neurons), n_sqrt, int(np.sqrt(num_inputs))
+                input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 10,
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
@@ -461,7 +429,7 @@ for epoch in range(n_epochs):
             )
             spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
             weights_im = plot_weights(square_weights, im=weights_im)
-            assigns_im = plot_assignments(square_assignments, classes=np.unique(classes), im=assigns_im)
+            assigns_im = plot_assignments(square_assignments, im=assigns_im)
             perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
             voltage_ims, voltage_axes = plot_voltages(
                 voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line"
@@ -494,8 +462,7 @@ for step, batch in enumerate(test_data):
     if step > n_test:
         break
     # Get next input sample.
-    inputs = {"X": batch["encoded_image"].view(int(time / dt), 1, 1, int(np.sqrt(num_inputs)),
-                                               int(np.sqrt(num_inputs)))}
+    inputs = {"X": batch["encoded_image"].view(int(time / dt), 1, 10, 10, 1)}
     if gpu:
         inputs = {k: v.cuda() for k, v in inputs.items()}
 
@@ -504,7 +471,7 @@ for step, batch in enumerate(test_data):
     t_record = []
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
-                vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS,
+                vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS, ADC=ADC,
                 drop_index_input=drop_input, reinforce_ref=reinforce_ref, reinforce_index_input=reinforce_input,
                 dead_index_input=dead_input, dead_index_exc=dead_exc)
 
@@ -530,8 +497,7 @@ for step, batch in enumerate(test_data):
 
     if test_plot:
         image = batch["encoded_image"].view(num_inputs, time)
-        inpt = inputs["X"].view(time, test_data[-1]["encoded_image"].shape[1]).sum(0).view(int(np.sqrt(num_inputs)),
-                                                                                           int(np.sqrt(num_inputs)))
+        inpt = inputs["X"].view(time, test_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
         spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
 
         spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
