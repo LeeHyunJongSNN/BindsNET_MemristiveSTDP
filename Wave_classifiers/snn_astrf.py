@@ -138,6 +138,7 @@ print("vLTD =", vLTD)
 print("beta =", beta)
 print("ST =", ST)
 print("AST =", AST)
+print("ADC =", ADC)
 print("dead synapse =", DS)
 
 if not AST:
