@@ -67,9 +67,9 @@ def rank_order_TTAS(datum: torch.Tensor, time: int, dt: float = 1.0, **kwargs) -
 
     # Create spike times tensor.
     spikes = torch.zeros(time, size).byte()
-    term = 250
-    jitter = 2
-    num = 2
+    term = 10       # 10
+    jitter = 2      # 2
+    num = 10        # 10
     for i in range(size):
         if 0 < times[i] < time:
             for k in range(1, num + 1):

@@ -524,7 +524,7 @@ class MemristiveSTDP_Simplified(LearningRule):
 
         # Adapitve Drop Connect
         if ADC:
-            p = minmax_scale(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size),
+            p = minmax_scale(np.round(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), 3),
                              feature_range=(0.999, 1)).reshape(X_size, Ae_size)
             m = torch.zeros(X_size, Ae_size).to('cuda')
 
@@ -978,7 +978,7 @@ class MemristiveSTDP(LearningRule):
 
         # Adapitve Drop Connect
         if ADC:
-            p = minmax_scale(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size),
+            p = minmax_scale(np.round(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), 3),
                              feature_range=(0.999, 1)).reshape(X_size, Ae_size)
             m = torch.zeros(X_size, Ae_size).to('cuda')
 
@@ -1636,7 +1636,7 @@ class MemristiveSTDP_TimeProportion(LearningRule):
 
         # Adapitve Drop Connect
         if ADC:
-            p = minmax_scale(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size),
+            p = minmax_scale(np.round(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), 3),
                              feature_range=(0.999, 1)).reshape(X_size, Ae_size)
             m = torch.zeros(X_size, Ae_size).to('cuda')
 
