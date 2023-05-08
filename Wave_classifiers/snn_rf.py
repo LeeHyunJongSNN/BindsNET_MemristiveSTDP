@@ -9,10 +9,12 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import minmax_scale
+from scipy.signal import detrend
 
-from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, SingleEncoder, RepeatEncoder
-from bindsnet.memstdp import RankOrderTTFSEncoder
-from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
+from bindsnet.encoding import PoissonEncoder, RankOrderEncoder, BernoulliEncoder, RepeatEncoder
+from bindsnet.memstdp import RankOrderTTFSEncoder, RankOrderTTASEncoder
+from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP, KISTnetwork_MemSTDP
 from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified, MemristiveSTDP_TimeProportion
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
@@ -38,29 +40,38 @@ parser.add_argument("--seed", type=int, default=random_seed)
 parser.add_argument("--n_neurons", type=int, default=4)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_workers", type=int, default=-1)
-parser.add_argument("--exc", type=float, default=90)
-parser.add_argument("--inh", type=float, default=480)
+parser.add_argument("--exc", type=float, default=22.5)
+parser.add_argument("--inh", type=float, default=17.5)
 parser.add_argument("--rest", type=float, default=-65.0)
 parser.add_argument("--reset", type=float, default=-60.0)
-parser.add_argument("--thresh", type=float, default=-58.0)
-parser.add_argument("--theta_plus", type=float, default=0.0009)
+parser.add_argument("--thresh", type=float, default=-52.0)
+parser.add_argument("--theta_plus", type=float, default=0.01)       # 0.01
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=9.5)      # increase by 2.5~4
+parser.add_argument("--intensity", type=float, default=500.0)       # 500.0
+parser.add_argument("--weight_scale", type=float, default=1.0)
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=0.95)
+parser.add_argument("--test_ratio", type=float, default=0.975)
 parser.add_argument("--random_G", type=bool, default=True)
-parser.add_argument("--vLTP", type=float, default=0.0)
-parser.add_argument("--vLTD", type=float, default=0.0)
+parser.add_argument("--vLTP", type=float, default=-3.0)
+parser.add_argument("--vLTD", type=float, default=-3.0)
 parser.add_argument("--beta", type=float, default=1.0)
+parser.add_argument("--ST", type=bool, default=False)
+parser.add_argument("--AST", type=bool, default=False)
+parser.add_argument("--drop_num", type=int, default=2)
+parser.add_argument("--reinforce_num", type=int, default=2)
+parser.add_argument("--DS", type=bool, default=True)
+parser.add_argument("--DS_input_num", type=int, default=10)
+parser.add_argument("--DS_exc_num", type=int, default=1)
+parser.add_argument("--ADC", type=bool, default=False)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=False, test_plot=False, gpu=True)
+parser.set_defaults(train_plot=False, test_plot=False, gpu=False)
 
 args = parser.parse_args()
 
@@ -77,7 +88,8 @@ theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
 intensity = args.intensity
-enocder_type = args.encoder_type
+weight_scale = args.weight_scale
+encoder_type = args.encoder_type
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 test_ratio = args.test_ratio
@@ -85,6 +97,14 @@ random_G = args.random_G
 vLTP = args.vLTP
 vLTD = args.vLTD
 beta = args.beta
+ST = args.ST
+AST = args.AST
+DS = args.DS
+DS_input_num = args.DS_input_num
+DS_exc_num = args.DS_exc_num
+drop_num = args.drop_num
+reinforce_num = args.reinforce_num
+ADC = args.ADC
 train = args.train
 train_plot = args.train_plot
 test_plot = args.test_plot
@@ -110,13 +130,24 @@ else:
         gpu = False
 
 torch.set_num_threads(os.cpu_count() - 1)
-
 print("Running on Device =", device)
 print("Random Seed =", random_seed)
 print("Random G value =", random_G)
 print("vLTP =", vLTP)
 print("vLTD =", vLTD)
 print("beta =", beta)
+print("ST =", ST)
+print("AST =", AST)
+print("ADC =", ADC)
+print("dead synapse =", DS)
+
+if not AST:
+    if ST:
+        print("drop synapse num =", drop_num)
+        print("reinforce synapse num =", reinforce_num)
+
+if DS:
+    print("%d dead synapses per %d exc neurons" % (DS_input_num, DS_exc_num))
 
 # Determines number of workers to use
 if n_workers == -1:
@@ -126,22 +157,22 @@ print(n_workers, os.cpu_count() - 1)
 
 n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 
-if enocder_type == "PoissonEncoder":
+if encoder_type == "PoissonEncoder":
     encoder = PoissonEncoder(time=time, dt=dt)
 
-elif enocder_type == "RankOrderEncoder":
+elif encoder_type == "RankOrderEncoder":
     encoder = RankOrderEncoder(time=time, dt=dt)
 
-elif enocder_type == "RankOrderTTFSEncoder":
+elif encoder_type == "RankOrderTTFSEncoder":
     encoder = RankOrderTTFSEncoder(time=time, dt=dt)
 
-elif enocder_type == "BernoulliEncoder":
+elif encoder_type == "RankOrderTTASEncoder":
+    encoder = RankOrderTTASEncoder(time=time, dt=dt)
+
+elif encoder_type == "BernoulliEncoder":
     encoder = BernoulliEncoder(time=time, dt=dt)
 
-elif enocder_type == "SingleEncoder":
-    encoder = SingleEncoder(time=time, dt=dt)
-
-elif enocder_type == "RepeatEncoder":
+elif encoder_type == "RepeatEncoder":
     encoder = RepeatEncoder(time=time, dt=dt)
 
 else:
@@ -153,30 +184,43 @@ test_data = []
 wave_data = []
 classes = []
 
-fname = "/home/leehyunjong/Wi-Fi_Preambles/"\
-        "WIFI_10MHz_IQvector_(minus)6dB_20000.txt"
+preprocessed = []
+pre_average = []
+drop_input = []
+reinforce_input = []
+reinforce_ref = []
+dead_input = []
+
+fname = "/home/leehyunjong/Dataset_2.4GHz/1kHz_10/vector/"\
+        "(sine+sawtooth)_1kHz_10_vector_12dB_20000.txt"
+
+# Regulate intensity according to nonlinearity
+if ST and vLTD <= 0 < vLTP:
+    if 'square' in fname:
+        intensity = intensity * 0.6
+    if '(sine+sawtooth)' in fname and DS_exc_num >= 1 and DS_input_num == 10:
+        intensity = intensity * 0.6
+
+elif ST and vLTP < 0:
+    if 'square' in fname:
+        intensity = intensity * 0.6
+    if '(sine+sawtooth)' in fname and DS_exc_num >= 1 and DS_input_num == 10:
+        intensity = intensity * 0.6
 
 raw = np.loadtxt(fname, dtype='complex')
 
 for line in raw:
     line_data = line[0:len(line) - 1]
     line_label = line[-1]
-    fft1 = np.fft.fft(line_data[16:80])
-    fft2 = np.fft.fft(line_data[96:160])
-    fft3 = np.fft.fft(line_data[192:256])
-    fft4 = np.fft.fft(line_data[256:len(line_data)])
-    fft = np.concatenate((fft1, fft2, fft3, fft4), axis=0)
-    scaled = intensity * np.abs(fft)
+    dcr = np.absolute(detrend(line_data - np.mean(line_data)))
+    # nrd = np.round(minmax_scale(dcr, feature_range=(0, 1)), 2)
+    nrd = np.round(dcr / np.max(dcr), 2)
 
-    if not gpu:
-        if line_label == 0:
-            line_label = 1
-        else:
-            line_label = 0
-
+    preprocessed.append(nrd)
     classes.append(line_label)
     lbl = torch.tensor(line_label).long()
 
+    scaled = intensity * nrd
     converted = torch.tensor(scaled, dtype=torch.float32)
     encoded = encoder.enc(datum=converted, time=time, dt=dt)
     wave_data.append({"encoded_image": encoded, "label": lbl})
@@ -189,6 +233,49 @@ n_train = len(train_data)
 n_test = len(test_data)
 
 num_inputs = train_data[-1]["encoded_image"].shape[1]
+pre_size = int(np.shape(preprocessed)[0] / n_classes)
+exc_size = int(np.sqrt(n_neurons))
+entire = np.sort(np.mean(preprocessed, axis=0))
+
+if ST:
+    for i in range(n_classes):
+        pre_average.append(np.mean(preprocessed[i * pre_size:(i + 1) * pre_size], axis=0))
+
+        if AST:
+            drop_num = len(np.where(pre_average[i] <= entire[int(num_inputs * 0.3) - 1])[0])
+            reinforce_num = len(np.where(pre_average[i] >= entire[int(num_inputs) - 1])[0])
+
+        drop_input.append(np.argwhere(pre_average[i] < np.sort(pre_average[i])[0:drop_num + 1][-1]).flatten())
+        reinforce_input.append(
+            np.argwhere(pre_average[i] > np.sort(pre_average[i])[0:num_inputs - reinforce_num][-1]).flatten())
+
+        if reinforce_num != 0:
+            values = np.sort(pre_average[i])[::-1][:reinforce_num]
+            reinforce_ref.append(values / np.max(values))
+        else:
+            reinforce_ref.append([])
+
+if DS:
+    for i in range(DS_exc_num):
+        dead_input.append(random.sample(range(0, num_inputs), DS_input_num))
+
+drop_input *= int(np.ceil(n_neurons / n_classes))
+reinforce_input *= int(np.ceil(n_neurons / n_classes))
+reinforce_ref *= int(np.ceil(n_neurons / n_classes))
+template_exc = np.arange(n_neurons)
+dead_exc = random.sample(range(0, n_neurons), DS_exc_num)
+
+if ST and DS and sum(dead_exc) % exc_size == 0:
+    tmp = [[] for _ in range(exc_size)]
+    ls = int(len(drop_input) / exc_size)
+    for i in range(exc_size):
+        tmp[i] = [drop_input[i]] * ls
+        drop_input += tmp[i]
+        tmp[i] = [reinforce_input[i]] * ls
+        reinforce_input += tmp[i]
+        tmp[i] = [reinforce_ref[i]] * ls
+        reinforce_ref += tmp[i]
+    drop_input = drop_input[n_neurons:]
 
 print(n_train, n_test, n_classes)
 
@@ -201,11 +288,11 @@ network = DiehlAndCook2015_MemSTDP(
     rest=rest,
     reset=reset,
     thresh=thresh,
-    update_rule=MemristiveSTDP_Simplified,
+    update_rule=MemristiveSTDP_TimeProportion,
     dt=dt,
-    norm=1.0,
+    norm=num_inputs / 10 * weight_scale,
     theta_plus=theta_plus,
-    inpt_shape=(1, num_inputs, 1),
+    inpt_shape=(1, num_inputs, 1)
 )
 
 # Directs network to GPU
@@ -253,8 +340,8 @@ perf_ax = None
 voltage_axes, voltage_ims = None, None
 
 # Random variables
-rand_gmax = torch.rand(num_inputs, n_neurons)
-rand_gmin = rand_gmax / 10 + torch.rand(num_inputs, n_neurons) / 100
+rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
+rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
 
 # Train the network.
 print("\nBegin training.\n")
@@ -303,7 +390,7 @@ for epoch in range(n_epochs):
                 100
                 * torch.sum(label_tensor.long() == proportion_pred).item()
                 / len(label_tensor)
-                # Match a label of a neuron that has the proportion of highest spikes rate with a data's real label.
+                # Match a label of a neuron that has the proportion of the highest spike rate with a data's real label.
             )
 
             print(
@@ -341,7 +428,10 @@ for epoch in range(n_epochs):
         t_record = []
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
-                    vLTP=vLTP, vLTD=vLTD, beta=beta, ST=False, DS=False, ADC=False)
+                    vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS, ADC=ADC,
+                    drop_index_input=drop_input, reinforce_ref=reinforce_ref, reinforce_index_input=reinforce_input,
+                    dead_index_input=dead_input, dead_index_exc=dead_exc)
+        # dead_index_input = dead_input
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -353,10 +443,10 @@ for epoch in range(n_epochs):
         # Optionally plot various simulation information.
         if train_plot:
             image = batch["encoded_image"].view(num_inputs, time)
-            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
-            input_exc_weights = network.connections[("X", "Ae")].w * 100    # Scaling for plotting
+            inpt = inputs["X"].view(time, train_data[-1]["encoded_image"].shape[1]).sum(0).view(1, num_inputs)
+            input_exc_weights = network.connections[("X", "Ae")].w
             square_weights = get_square_weights(
-               input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, 16
+                input_exc_weights.view(train_data[-1]["encoded_image"].shape[1], n_neurons), n_sqrt, (1, num_inputs)
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
@@ -384,7 +474,6 @@ print("Training complete.\n")
 
 # Sequence of accuracy estimates.
 accuracy = {"all": 0, "proportion": 0}
-confusion_matrix = {"TP": 0, "FP": 0, "TN": 0, "FN": 0}
 
 # Record spikes during the simulation.
 spike_record = torch.zeros((1, int(time / dt), n_neurons), device=device)
@@ -409,7 +498,9 @@ for step, batch in enumerate(test_data):
     t_record = []
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
-                vLTP=vLTP, vLTD=vLTD, beta=beta, ST=False, DS=False, ADC=False)
+                vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS, ADC=ADC,
+                drop_index_input=drop_input, reinforce_ref=reinforce_ref, reinforce_index_input=reinforce_input,
+                dead_index_input=dead_input, dead_index_exc=dead_exc)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
@@ -433,7 +524,7 @@ for step, batch in enumerate(test_data):
 
     if test_plot:
         image = batch["encoded_image"].view(num_inputs, time)
-        inpt = inputs["X"].view(time, test_data[-1]["encoded_image"].shape[1]).sum(0).view(16, 16)
+        inpt = inputs["X"].view(time, test_data[-1]["encoded_image"].shape[1]).sum(0).view(1, num_inputs)
         spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
 
         spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
@@ -448,24 +539,6 @@ for step, batch in enumerate(test_data):
     accuracy["all"] += float(torch.sum(label_tensor.long() == all_activity_pred).item())
     accuracy["proportion"] += float(torch.sum(label_tensor.long() == proportion_pred).item())
 
-    if gpu:
-        P_tensor = torch.zeros(label_tensor.long().shape).long().cuda()      # label 0
-        N_tensor = torch.ones(label_tensor.long().shape).long().cuda()     # label 1
-
-    else:
-        P_tensor = torch.ones(label_tensor.long().shape).long()     # label 1
-        N_tensor = torch.zeros(label_tensor.long().shape).long()    # label 0
-
-    TP = float(torch.sum((all_activity_pred == P_tensor) & (label_tensor.long() == P_tensor)).item())
-    FP = float(torch.sum((all_activity_pred == P_tensor) & (label_tensor.long() == N_tensor)).item())
-    TN = float(torch.sum((all_activity_pred == N_tensor) & (label_tensor.long() == N_tensor)).item())
-    FN = float(torch.sum((all_activity_pred == N_tensor) & (label_tensor.long() == P_tensor)).item())
-
-    confusion_matrix["TP"] += TP
-    confusion_matrix["FP"] += FP
-    confusion_matrix["TN"] += TN
-    confusion_matrix["FN"] += FN
-
     network.reset_state_variables()  # Reset state variables.
     pbar.set_description_str("Test progress: ")
     pbar.update()
@@ -473,9 +546,5 @@ for step, batch in enumerate(test_data):
     print("\nAll activity accuracy: %.2f" % (accuracy["all"] / n_test * 100))
     print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test * 100))
 
-print(confusion_matrix)
-print("Probability of Detection: %.4f" % (confusion_matrix["TP"] / (confusion_matrix["TP"] + confusion_matrix["FN"])))
-print("False Negative Probability: %.4f" % (confusion_matrix["FN"] / (confusion_matrix["TP"] + confusion_matrix["FN"])))
-print("False Positive Probability: %.4f" % (confusion_matrix["FP"] / (confusion_matrix["FP"] + confusion_matrix["TN"])))
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Testing complete.\n")
