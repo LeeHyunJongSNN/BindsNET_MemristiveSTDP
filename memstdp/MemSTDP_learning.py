@@ -222,11 +222,10 @@ class MemristiveSTDP_Simplified(LearningRule):
         Ae_index_LTP = 0
         Ae_index_LTD = 0
 
-        # Dead synapses variables
+        # Synaptic configurations
         drop_index_input = []
-        drop_index_exc = []
+        template_exc = []
         reinforce_index_input = []
-        reinforce_index_exc = []
 
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
@@ -246,31 +245,15 @@ class MemristiveSTDP_Simplified(LearningRule):
         if grand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
-
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
+
 
         # Synaptic Template
         if ST:
             drop_index_input = kwargs.get('drop_index_input')
             reinforce_index_input = kwargs.get('reinforce_index_input')
             reinforce_ref = kwargs.get('reinforce_ref')
-
-            if DS:
-                dead_index_input = kwargs.get('dead_index_input')
-                dead_index_exc = kwargs.get('dead_index_exc')
-                if sum(dead_index_exc) % 2 == 0 and ST:
-                    l = len(drop_index_input) / 2
-                    tmp1 = [drop_index_input[0]] * l
-                    tmp2 = [drop_index_input[1]] * l
-                    drop_index_input = tmp1 + tmp2
-                    tmp1 = [reinforce_index_input[0]] * l
-                    tmp2 = [reinforce_index_input[1]] * l
-                    reinforce_index_input = tmp1 + tmp2
-                    tmp1 = [reinforce_ref[0]] * l
-                    tmp2 = [reinforce_ref[1]] * l
-                    reinforce_ref = tmp1 + tmp2
-
             for i in range(len(template_exc)):
                 for j in drop_index_input[i]:
                     self.connection.w[j, template_exc[i]] = 0
@@ -282,11 +265,11 @@ class MemristiveSTDP_Simplified(LearningRule):
                                                                         j == reinforce_index_input[i])[
                                                                             0])] * 0.5
 
+
         # Dead synpase simulation
         if DS:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
-
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
                     self.connection.w[j, dead_index_exc[i]] = 0
@@ -524,8 +507,9 @@ class MemristiveSTDP_Simplified(LearningRule):
 
         # Adapitve Drop Connect
         if ADC:
-            p = minmax_scale(np.round(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), 3),
-                             feature_range=(0.999, 1)).reshape(X_size, Ae_size)
+            p = np.round(minmax_scale(
+                np.nan_to_num(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), copy=False),
+                feature_range=(0.9999, 1)).reshape(X_size, Ae_size), 3)
             m = torch.zeros(X_size, Ae_size).to('cuda')
 
             for i in range(X_size):
@@ -624,11 +608,10 @@ class MemristiveSTDP(LearningRule):
         Ae_index_LTP = 0
         Ae_index_LTD = 0
 
-        # Dead synapses variables
+        # Synaptic configurations
         drop_index_input = []
-        drop_index_exc = []
+        template_exc = []
         reinforce_index_input = []
-        reinforce_index_exc = []
 
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
@@ -648,31 +631,15 @@ class MemristiveSTDP(LearningRule):
         if grand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
-
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
+
 
         # Synaptic Template
         if ST:
             drop_index_input = kwargs.get('drop_index_input')
             reinforce_index_input = kwargs.get('reinforce_index_input')
             reinforce_ref = kwargs.get('reinforce_ref')
-
-            if DS:
-                dead_index_input = kwargs.get('dead_index_input')
-                dead_index_exc = kwargs.get('dead_index_exc')
-                if sum(dead_index_exc) % 2 == 0 and ST:
-                    l = len(drop_index_input) / 2
-                    tmp1 = [drop_index_input[0]] * l
-                    tmp2 = [drop_index_input[1]] * l
-                    drop_index_input = tmp1 + tmp2
-                    tmp1 = [reinforce_index_input[0]] * l
-                    tmp2 = [reinforce_index_input[1]] * l
-                    reinforce_index_input = tmp1 + tmp2
-                    tmp1 = [reinforce_ref[0]] * l
-                    tmp2 = [reinforce_ref[1]] * l
-                    reinforce_ref = tmp1 + tmp2
-
             for i in range(len(template_exc)):
                 for j in drop_index_input[i]:
                     self.connection.w[j, template_exc[i]] = 0
@@ -684,11 +651,11 @@ class MemristiveSTDP(LearningRule):
                                                                         j == reinforce_index_input[i])[
                                                                             0])] * 0.5
 
+
         # Dead synpase simulation
         if DS:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
-
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
                     self.connection.w[j, dead_index_exc[i]] = 0
@@ -978,8 +945,9 @@ class MemristiveSTDP(LearningRule):
 
         # Adapitve Drop Connect
         if ADC:
-            p = minmax_scale(np.round(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), 3),
-                             feature_range=(0.999, 1)).reshape(X_size, Ae_size)
+            p = np.round(minmax_scale(
+                np.nan_to_num(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), copy=False),
+                feature_range=(0.9999, 1)).reshape(X_size, Ae_size), 3)
             m = torch.zeros(X_size, Ae_size).to('cuda')
 
             for i in range(X_size):
@@ -1227,11 +1195,10 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         Ae_index_LTP = 0
         Ae_index_LTD = 0
 
-        # Dead synapses variables
+        # Synaptic configurations
         drop_index_input = []
         template_exc = []
         reinforce_index_input = []
-        template_exc = []
 
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
@@ -1251,31 +1218,15 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         if grand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
-
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
+
 
         # Synaptic Template
         if ST:
             drop_index_input = kwargs.get('drop_index_input')
             reinforce_index_input = kwargs.get('reinforce_index_input')
             reinforce_ref = kwargs.get('reinforce_ref')
-
-            if DS:
-                dead_index_input = kwargs.get('dead_index_input')
-                dead_index_exc = kwargs.get('dead_index_exc')
-                if sum(dead_index_exc) % 2 == 0 and ST:
-                    l = int(len(drop_index_input) / 2)
-                    tmp1 = [drop_index_input[0]] * l
-                    tmp2 = [drop_index_input[1]] * l
-                    drop_index_input = tmp1 + tmp2
-                    tmp1 = [reinforce_index_input[0]] * l
-                    tmp2 = [reinforce_index_input[1]] * l
-                    reinforce_index_input = tmp1 + tmp2
-                    tmp1 = [reinforce_ref[0]] * l
-                    tmp2 = [reinforce_ref[1]] * l
-                    reinforce_ref = tmp1 + tmp2
-
             for i in range(len(template_exc)):
                 for j in drop_index_input[i]:
                     self.connection.w[j, template_exc[i]] = 0
@@ -1287,14 +1238,14 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                             j == reinforce_index_input[i])[
                                                                                 0])] * 0.5
 
+
         # Dead synpase simulation
         if DS:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
-
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
-                    self.connection.w[j, dead_index_exc[i]] = 0
+                    self.connection.w[j, dead_index_exc[i]] = 0     # gmax[j, dead_index_exc[i]]
 
 
         # Weight update with memristive characteristc
@@ -1636,8 +1587,9 @@ class MemristiveSTDP_TimeProportion(LearningRule):
 
         # Adapitve Drop Connect
         if ADC:
-            p = minmax_scale(np.round(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), 3),
-                             feature_range=(0.999, 1)).reshape(X_size, Ae_size)
+            p = np.round(minmax_scale(
+                np.nan_to_num(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), copy=False),
+                feature_range=(0.9995, 1)).reshape(X_size, Ae_size), 3)
             m = torch.zeros(X_size, Ae_size).to('cuda')
 
             for i in range(X_size):
@@ -1740,16 +1692,28 @@ class MemristiveSTDP_KIST(LearningRule):
         Ae_index_LTP = 0
         Ae_index_LTD = 0
 
-        # Dead synapses variables
-        dead_index_input = []
-        dead_index_exc = []
-        DS = kwargs.get('DS')  # Dead synapses simulation
+        # Synaptic Template
+        template_exc = []
+        template_exc = kwargs.get('template_exc')
+        ST = kwargs.get('ST')
+        if ST:
+            drop_index_input = kwargs.get('drop_index_input')
+            reinforce_index_input = kwargs.get('reinforce_index_input')
+            for i in range(len(template_exc)):
+                for j in drop_index_input[i]:
+                    self.connection.w[j, template_exc[i]] = 0
+                for j in reinforce_index_input[i]:
+                    if self.connection.w[j, template_exc[i]] <= 0.5:
+                        self.connection.w[j, template_exc[i]] = 1.0
+
 
         # Dead synpase simulation
+        dead_index_input = []
+        dead_index_exc = []
+        DS = kwargs.get('DS')
         if DS:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
-
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
                     self.connection.w[j, dead_index_exc[i]] = 0
@@ -1776,10 +1740,10 @@ class MemristiveSTDP_KIST(LearningRule):
                                 for j in range(X_cause_count):
                                     t = abs(Ae_time_LTP - X_cause_time[j])
                                     if (t <= ref_t):
-                                        if (self.connection.w[i, k.item()] == 1):
+                                        if (self.connection.w[i, k.item()] == 1.0):
                                             continue
                                         else:
-                                            self.connection.w[i, k.item()] += 1
+                                            self.connection.w[i, k.item()] = 1.0
 
             elif Ae_time_LTP >= pulse_time_LTP:
                 if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
@@ -1796,10 +1760,10 @@ class MemristiveSTDP_KIST(LearningRule):
                                 for j in range(X_cause_count):
                                     t = abs(Ae_time_LTP - X_cause_time[j])
                                     if (t <= ref_t):
-                                        if (self.connection.w[i, k.item()] == 1):
+                                        if (self.connection.w[i, k.item()] == 1.0):
                                             continue
                                         else:
-                                            self.connection.w[i, k.item()] += 1
+                                            self.connection.w[i, k.item()] = 1.0
 
                 if time - pulse_time_LTD > 0:
                     if torch.numel(
@@ -1821,10 +1785,10 @@ class MemristiveSTDP_KIST(LearningRule):
                                         for j in range(X_cause_count):
                                             t = abs(Ae_time_LTP - X_cause_time[j])
                                             if (t <= ref_t):
-                                                if (self.connection.w[i, k.item()] == 0):
+                                                if (self.connection.w[i, k.item()] == 0.2):
                                                     continue
                                                 else:
-                                                    self.connection.w[i, k.item()] -= 1
+                                                    self.connection.w[i, k.item()] = 0.2
 
                 if time == simulation_time:
                     for l in range(time - pulse_time_LTD, time):
@@ -1844,10 +1808,10 @@ class MemristiveSTDP_KIST(LearningRule):
                                             for j in range(X_cause_count):
                                                 t = abs(Ae_time_LTP - X_cause_time[j])
                                                 if (t <= ref_t):
-                                                    if (self.connection.w[i, k.item()] == 0):
+                                                    if (self.connection.w[i, k.item()] == 0.2):
                                                         continue
                                                     else:
-                                                        self.connection.w[i, k.item()] -= 1
+                                                        self.connection.w[i, k.item()] = 0.2
 
 
         super().update()
