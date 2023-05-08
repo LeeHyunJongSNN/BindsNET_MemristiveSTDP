@@ -9,10 +9,12 @@ from tqdm import tqdm
 from time import time as t
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from bindsnet.encoding import PoissonEncoder
+from bindsnet.memstdp import RankOrderTTFSEncoder
 from bindsnet.memstdp.MemSTDP_models import DiehlAndCook2015_MemSTDP
-from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP_TimeProportion
+from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP
 from bindsnet.learning.learning import PostPre
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
@@ -35,25 +37,26 @@ from bindsnet.memstdp.plotting_weights_counts import hist_weights
 gpu = True
 plot = True
 train = True
-update_interval = 10
+update_interval = 1
 progress_interval = 10
-intensity = 200
+intensity = 400
 time = 500
 dt = 1.0
 test_ratio = 1/3
 n_neurons = 16
-exc = 22.5
-inh = 17.5
-theta_plus = 0.05
+exc = 90
+inh = 480
+theta_plus = 0.005
 spare_gpu = 0
 seed = random.randint(0, 100)
 random_G = True
 vLTP = 0.0
 vLTD = 0.0
 beta = 1.0
-adaptive_dropout = False
-dropout_num = 1
-n_epochs = 10
+dead_synapse = False
+dead_synapse_input_num = 2
+dead_synapse_exc_num = 2
+n_epochs = 1
 n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 n_workers = -1
 
@@ -90,34 +93,27 @@ if not train:
 iris = load_iris()
 iris_data = iris.data
 iris_label = iris.target
+standard_scaler = StandardScaler()
+minmax_scaler = MinMaxScaler()
+standard_scaler.fit(iris_data)
+iris_standard = standard_scaler.transform(iris_data)
+minmax_scaler.fit(iris_standard)
+iris_minmax = minmax_scaler.transform(iris_standard)
 
 encoder = PoissonEncoder(time=time, dt=dt)
 whole_data = []
 classes = []
-preprocessed = []
-pre_average = []
-dropout_index = []
 
 # Preprocess iris data
 for i in range(150):
-    iris_converted = intensity * torch.tensor(iris_data[i], dtype=torch.float32)
-    preprocessed.append(np.array(iris_data[i]))
+    iris_converted = torch.tensor([intensity * float(abs(x)) for x in iris_minmax[i][0:len(iris_minmax[i])]])
     encoded = encoder.enc(datum=iris_converted, time=time, dt=dt)
     whole_data.append({"encoded_image": encoded, "label": iris_label[i]})
     classes.append(iris_label[i])
 
-train_data, test_data, temp, temp1 = train_test_split(whole_data, whole_data, test_size=test_ratio)
+train_data, test_data = train_test_split(whole_data, test_size=test_ratio)
 
 n_classes = (np.unique(classes)).size
-pre_size = int(np.shape(preprocessed)[0] / n_classes)
-
-if adaptive_dropout:
-    for j in range(n_classes):
-        pre_average.append(np.mean(preprocessed[j * pre_size:(j + 1) * pre_size], axis=0))
-        dropout_index.append(np.argwhere(pre_average[j] < np.sort(pre_average[j])[0:dropout_num + 1][-1]).flatten())
-
-dropout_index *= int(np.ceil(n_neurons / n_classes))
-dropout_exc = np.arange(n_neurons)
 
 n_train = len(train_data)
 n_test = len(test_data)
@@ -131,11 +127,11 @@ network = DiehlAndCook2015_MemSTDP(
     n_neurons=n_neurons,
     exc=exc,
     inh=inh,
-    update_rule=MemristiveSTDP_TimeProportion,
+    update_rule=MemristiveSTDP,
     dt=dt,
-    norm=0.4,
+    norm=1.0,
     theta_plus=theta_plus,
-    inpt_shape=(1, 2, 2),
+    inpt_shape=(1, num_inputs, 1),
 )
 
 if gpu:
@@ -184,6 +180,10 @@ voltage_axes, voltage_ims = None, None
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
+dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
+dead_index_input = []
+for i in range(dead_synapse_exc_num):
+    dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
 
 # Train the network.
 print("\nBegin training.\n")
@@ -199,7 +199,7 @@ for epoch in range(n_epochs):
         if step > n_train:
             break
         # Get next input sample.
-        inputs = {"X": batch["encoded_image"].view(int(time / dt), 1, 1, 2, 2)}
+        inputs = {"X": batch["encoded_image"].view(int(time / dt), 1, 1, num_inputs, 1)}
         if gpu:
             inputs = {k: v.cuda() for k, v in inputs.items()}
 
@@ -271,7 +271,7 @@ for epoch in range(n_epochs):
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                     vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_synapse=adaptive_dropout, dead_index_input=dropout_index, dead_index_exc=dropout_exc)
+                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -317,7 +317,7 @@ accuracy = {"all": 0, "proportion": 0}
 confusion_matrix = {"TP": 0, "FP": 0, "TN": 0, "FN": 0}
 
 # Record spikes during the simulation.
-spike_record = torch.zeros((1, int(time / dt), n_neurons), device=device)
+spike_record = torch.zeros((update_interval, int(time / dt), n_neurons), device=device)
 
 # Train the network.
 print("\nBegin testing\n")
@@ -340,7 +340,8 @@ for step, batch in enumerate(test_data):
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
                 vLTP=vLTP, vLTD=vLTD, beta=beta,
-                dead_synapse=adaptive_dropout, dead_index_input=dropout_index, dead_index_exc=dropout_exc)
+                dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc,
+                dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()

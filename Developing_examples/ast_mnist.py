@@ -1,7 +1,6 @@
 import argparse
 import random
 import os
-import gc
 from time import time as t
 
 import matplotlib.pyplot as plt
@@ -9,6 +8,8 @@ import numpy as np
 import torch
 from torchvision import transforms
 from tqdm import tqdm
+
+from keras.datasets import mnist
 
 from bindsnet.analysis.plotting import (
     plot_assignments,
@@ -23,7 +24,6 @@ from bindsnet.encoding import PoissonEncoder
 from bindsnet.evaluation import all_activity, assign_labels, proportion_weighting
 from bindsnet.memstdp.MemSTDP_models import AdaptiveIFNetwork_MemSTDP, DiehlAndCook2015_MemSTDP
 from bindsnet.memstdp.MemSTDP_learning import MemristiveSTDP, MemristiveSTDP_Simplified, MemristiveSTDP_TimeProportion
-from bindsnet.learning import PostPre
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_assignments, get_square_weights
 from bindsnet.memstdp.plotting_weights_counts import hist_weights
@@ -43,12 +43,19 @@ parser.add_argument("--dt", type=int, default=1.0)
 parser.add_argument("--intensity", type=float, default=128)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=250)
+parser.add_argument("--ST", type=bool, default=True)
+parser.add_argument("--AST", type=bool, default=True)
+parser.add_argument("--drop_num", type=int, default=400)
+parser.add_argument("--reinforce_num", type=int, default=100)
+parser.add_argument("--DS", type=bool, default=False)
+parser.add_argument("--DS_input_num", type=int, default=0)
+parser.add_argument("--DS_exc_num", type=int, default=0)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(plot=False, gpu=True)
+parser.set_defaults(plot=True, gpu=True)
 
 args = parser.parse_args()
 
@@ -67,14 +74,18 @@ intensity = args.intensity
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 train = args.train
+ST = args.ST
+AST = args.AST
+drop_num = args.drop_num
+reinforce_num = args.reinforce_num
+DS = args.DS
+DS_input_num = args.DS_input_num
+DS_exc_num = args.DS_exc_num
 plot = args.plot
 gpu = args.gpu
 spare_gpu = args.spare_gpu
 
 # Sets up Gpu use
-gc.collect()
-torch.cuda.empty_cache()
-
 if spare_gpu != 0:
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = str(spare_gpu)
@@ -104,19 +115,16 @@ if not train:
 
 n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
 num_inputs = 784
-dead_synapse_input_num = 5
-dead_synapse_exc_num = 2
 vLTP = 0.0
 vLTD = 0.0
 beta = 1.0
 random_G = True
-dead_synapse = False
 
 # Build network.
 network = DiehlAndCook2015_MemSTDP(
     n_inpt=num_inputs,
     n_neurons=n_neurons,
-    update_rule=PostPre,
+    update_rule=MemristiveSTDP_TimeProportion,
     exc=exc,
     inh=inh,
     dt=dt,
@@ -140,6 +148,51 @@ train_dataset = MNIST(
         [transforms.ToTensor(), transforms.Lambda(lambda x: x * intensity)]
     ),
 )
+
+pre_average = []
+dropout_index = []
+drop_input = []
+reinforce_input = []
+reinforce_ref = []
+dead_input = []
+
+pre = mnist.load_data()
+pre_x = pre[0][0].reshape(60000, 784)
+pre_y = pre[0][1].reshape(60000, 1)
+preprocessed = np.concatenate((pre_x, pre_y), axis=1)
+preprocessed = preprocessed[preprocessed[:, 784].argsort()]
+preprocessed = preprocessed[:, 0:784]
+
+num_inputs = 784
+pre_size = 6000
+entire = np.sort(np.mean(preprocessed, axis=0))
+
+if ST:
+    for i in range(10):
+        pre_average.append(np.mean(preprocessed[i * pre_size:(i + 1) * pre_size], axis=0))
+
+        if AST:
+            drop_num = len(np.where(pre_average[i] <= entire[int(num_inputs * 0.3) - 1])[0])
+            reinforce_num = len(np.where(pre_average[i] >= entire[int(num_inputs) - 1])[0])
+
+        drop_input.append(np.argwhere(pre_average[i] < np.sort(pre_average[i])[0:drop_num + 1][-1]).flatten())
+        reinforce_input.append(
+            np.argwhere(pre_average[i] > np.sort(pre_average[i])[0:num_inputs - reinforce_num][-1]).flatten())
+        if reinforce_num != 0:
+            values = np.sort(pre_average[i])[::-1][:reinforce_num]
+            reinforce_ref.append(values / np.max(values))
+        else:
+            reinforce_ref.append([])
+
+if DS:
+    for i in range(DS_exc_num):
+        dead_input.append(random.sample(range(0, num_inputs), DS_input_num))
+
+drop_input *= int(np.ceil(n_neurons / 10))
+reinforce_input *= int(np.ceil(n_neurons / 10))
+reinforce_ref *= int(np.ceil(n_neurons / 10))
+template_exc = np.arange(n_neurons)
+dead_exc = random.sample(range(0, n_neurons), DS_exc_num)
 
 # Record spikes during the simulation.
 spike_record = torch.zeros((update_interval, int(time / dt), n_neurons), device=device)
@@ -189,10 +242,6 @@ voltage_axes, voltage_ims = None, None
 # Random variables
 rand_gmax = 0.5 * torch.rand(num_inputs, n_neurons) + 0.5
 rand_gmin = 0.5 * torch.rand(num_inputs, n_neurons)
-dead_index_exc = random.sample(range(0, n_neurons), dead_synapse_exc_num)
-dead_index_input = []
-for i in range(dead_synapse_exc_num):
-    dead_index_input.append(random.sample(range(0, num_inputs), dead_synapse_input_num))
 
 # Train the network.
 print("\nBegin training.\n")
@@ -279,8 +328,9 @@ for epoch in range(n_epochs):
         t_record = []
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                     simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
-                    vLTP=vLTP, vLTD=vLTD, beta=beta,
-                    dead_synapse=dead_synapse, dead_index_input=dead_index_input, dead_index_exc=dead_index_exc)
+                    vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS,
+                    drop_index_input=drop_input, reinforce_ref=reinforce_ref, reinforce_index_input=reinforce_input,
+                    dead_index_input=dead_input, dead_index_exc=dead_exc)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -358,8 +408,9 @@ for step, batch in enumerate(test_dataset):
     t_record = []
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
                 simulation_time=time, rand_gmax=rand_gmax, rand_gmin=rand_gmin, random_G=random_G,
-                vLTP=vLTP, vLTD=vLTD, beta=beta,
-                dead_synapse_input_num=dead_synapse_input_num, dead_synapse_exc_num=dead_synapse_exc_num)
+                vLTP=vLTP, vLTD=vLTD, beta=beta, template_exc=template_exc, ST=ST, DS=DS,
+                drop_index_input=drop_input, reinforce_ref=reinforce_ref, reinforce_index_input=reinforce_input,
+                dead_index_input=dead_input, dead_index_exc=dead_exc)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
