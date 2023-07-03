@@ -6,8 +6,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
-from scipy.stats import bernoulli
-from sklearn.preprocessing import minmax_scale
 
 from bindsnet.utils import im2col_indices
 from ..network.nodes import SRM0Nodes
@@ -222,11 +220,6 @@ class MemristiveSTDP_Simplified(LearningRule):
         Ae_index_LTP = 0
         Ae_index_LTD = 0
 
-        # Synaptic configurations
-        drop_index_input = []
-        template_exc = []
-        reinforce_index_input = []
-
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
         vltd = kwargs.get('vLTD')
@@ -236,9 +229,8 @@ class MemristiveSTDP_Simplified(LearningRule):
 
         # Boolean varibles for addtional feature
         grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
-        template_exc = kwargs.get('template_exc')  # ST excitatory neuron num
         ST = kwargs.get('ST')  # ST useage
-        ADC = kwargs.get('ADC')  # ADC useage
+        Pruning = kwargs.get('Pruning')  # Pruning useage
         DS = kwargs.get("DS")  # DS simulation
 
         # Random Conductance uperbound and underbound
@@ -251,19 +243,16 @@ class MemristiveSTDP_Simplified(LearningRule):
 
         # Synaptic Template
         if ST:
-            drop_index_input = kwargs.get('drop_index_input')
+            drop_mask = kwargs.get('drop_mask')
             reinforce_index_input = kwargs.get('reinforce_index_input')
             reinforce_ref = kwargs.get('reinforce_ref')
-            for i in range(len(template_exc)):
-                for j in drop_index_input[i]:
-                    self.connection.w[j, template_exc[i]] = 0
+            n_neurons = kwargs.get('n_neurons')
+            self.connection.w *= drop_mask
+            for i in range(n_neurons):
                 for j in reinforce_index_input[i]:
-                    if self.connection.w[j, template_exc[i]] <= gmax[j, template_exc[i]] * 0.4:
-                        self.connection.w[j, template_exc[i]] = gmax[j, template_exc[i]] * \
-                                                                reinforce_ref[int(template_exc[i])][
-                                                                    int(np.where(
-                                                                        j == reinforce_index_input[i])[
-                                                                            0])] * 0.5
+                    if self.connection.w[j, i] <= gmax[j, i] * 0.4:  # min 0.4
+                        self.connection.w[j, i] = gmax[j, i] * reinforce_ref[i][int(np.where(
+                            j == reinforce_index_input[i])[0])] * 0.5  # scaling 0.5
 
 
         # Dead synpase simulation
@@ -505,18 +494,10 @@ class MemristiveSTDP_Simplified(LearningRule):
                                                                                               1 - np.exp(vltd / 256))
 
 
-        # Adapitve Drop Connect
-        if ADC:
-            p = np.round(minmax_scale(
-                np.nan_to_num(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), copy=False),
-                feature_range=(0.9999, 1)).reshape(X_size, Ae_size), 3)
-            m = torch.zeros(X_size, Ae_size).to('cuda')
-
-            for i in range(X_size):
-                for j in range(Ae_size):
-                    m[i, j] = int(bernoulli.rvs(p[i, j], size=1))
-
-            self.connection.w *= m
+        # Network pruning
+        if Pruning:
+            check = torch.where(self.connection.w >= 0.1, True, False)
+            self.connection.w *= check
 
 
         super().update()
@@ -608,11 +589,6 @@ class MemristiveSTDP(LearningRule):
         Ae_index_LTP = 0
         Ae_index_LTD = 0
 
-        # Synaptic configurations
-        drop_index_input = []
-        template_exc = []
-        reinforce_index_input = []
-
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
         vltd = kwargs.get('vLTD')
@@ -622,9 +598,8 @@ class MemristiveSTDP(LearningRule):
 
         # Boolean varibles for addtional feature
         grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
-        template_exc = kwargs.get('template_exc')  # ST excitatory neuron num
         ST = kwargs.get('ST')  # ST useage
-        ADC = kwargs.get('ADC')  # ADC useage
+        Pruning = kwargs.get('Pruning')  # Pruning useage
         DS = kwargs.get("DS")  # DS simulation
 
         # Random Conductance uperbound and underbound
@@ -635,21 +610,17 @@ class MemristiveSTDP(LearningRule):
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
 
-        # Synaptic Template
         if ST:
-            drop_index_input = kwargs.get('drop_index_input')
+            drop_mask = kwargs.get('drop_mask')
             reinforce_index_input = kwargs.get('reinforce_index_input')
             reinforce_ref = kwargs.get('reinforce_ref')
-            for i in range(len(template_exc)):
-                for j in drop_index_input[i]:
-                    self.connection.w[j, template_exc[i]] = 0
+            n_neurons = kwargs.get('n_neurons')
+            self.connection.w *= drop_mask
+            for i in range(n_neurons):
                 for j in reinforce_index_input[i]:
-                    if self.connection.w[j, template_exc[i]] <= gmax[j, template_exc[i]] * 0.4:
-                        self.connection.w[j, template_exc[i]] = gmax[j, template_exc[i]] * \
-                                                                reinforce_ref[int(template_exc[i])][
-                                                                    int(np.where(
-                                                                        j == reinforce_index_input[i])[
-                                                                            0])] * 0.5
+                    if self.connection.w[j, i] <= gmax[j, i] * 0.4:     # min 0.4
+                        self.connection.w[j, i] = gmax[j, i] * reinforce_ref[i][int(np.where(
+                            j == reinforce_index_input[i])[0])] * 0.5   # scaling 0.5
 
 
         # Dead synpase simulation
@@ -943,18 +914,10 @@ class MemristiveSTDP(LearningRule):
                                                                                                1 - np.exp(vltd / 256))
 
 
-        # Adapitve Drop Connect
-        if ADC:
-            p = np.round(minmax_scale(
-                np.nan_to_num(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), copy=False),
-                feature_range=(0.9999, 1)).reshape(X_size, Ae_size), 3)
-            m = torch.zeros(X_size, Ae_size).to('cuda')
-
-            for i in range(X_size):
-                for j in range(Ae_size):
-                    m[i, j] = int(bernoulli.rvs(p[i, j], size=1))
-
-            self.connection.w *= m
+        # Network pruning
+        if Pruning:
+            check = torch.where(self.connection.w >= 0.02, True, False)
+            self.connection.w *= check
 
 
         super().update()
@@ -1195,11 +1158,6 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         Ae_index_LTP = 0
         Ae_index_LTD = 0
 
-        # Synaptic configurations
-        drop_index_input = []
-        template_exc = []
-        reinforce_index_input = []
-
         # Factors for nonlinear update
         vltp = kwargs.get('vLTP')
         vltd = kwargs.get('vLTD')
@@ -1209,12 +1167,11 @@ class MemristiveSTDP_TimeProportion(LearningRule):
 
         # Boolean varibles for addtional feature
         grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
-        template_exc = kwargs.get('template_exc')  # ST excitatory neuron num
         ST = kwargs.get('ST')  # ST useage
-        ADC = kwargs.get('ADC')  # ADC useage
+        Pruning = kwargs.get("Pruning")  # Pruning useage
         DS = kwargs.get("DS")  # DS simulation
 
-        # Random Conductance uperbound and underbound
+        # Random conductance uperbound and underbound
         if grand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
@@ -1224,19 +1181,16 @@ class MemristiveSTDP_TimeProportion(LearningRule):
 
         # Synaptic Template
         if ST:
-            drop_index_input = kwargs.get('drop_index_input')
+            drop_mask = kwargs.get('drop_mask')
             reinforce_index_input = kwargs.get('reinforce_index_input')
             reinforce_ref = kwargs.get('reinforce_ref')
-            for i in range(len(template_exc)):
-                for j in drop_index_input[i]:
-                    self.connection.w[j, template_exc[i]] = 0
+            n_neurons = kwargs.get('n_neurons')
+            self.connection.w *= drop_mask
+            for i in range(n_neurons):
                 for j in reinforce_index_input[i]:
-                    if self.connection.w[j, template_exc[i]] <= gmax[j, template_exc[i]] * 0.4:
-                        self.connection.w[j, template_exc[i]] = gmax[j, template_exc[i]] * \
-                                                                    reinforce_ref[int(template_exc[i])][
-                                                                        int(np.where(
-                                                                            j == reinforce_index_input[i])[
-                                                                                0])] * 0.5
+                    if self.connection.w[j, i] <= gmax[j, i] * 0.4:     # min 0.4
+                        self.connection.w[j, i] = gmax[j, i] * reinforce_ref[i][int(np.where(
+                            j == reinforce_index_input[i])[0])] * 0.5   # scaling 0.5
 
 
         # Dead synpase simulation
@@ -1245,7 +1199,9 @@ class MemristiveSTDP_TimeProportion(LearningRule):
             dead_index_exc = kwargs.get('dead_index_exc')
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
-                    self.connection.w[j, dead_index_exc[i]] = 0     # gmax[j, dead_index_exc[i]]
+                    self.connection.w[j, dead_index_exc[i]] = gmax[j, dead_index_exc[i]]
+                    # 0 for SA0 faults
+                    # gmax[j, dead_index_exc[i]] for SA1 faults
 
 
         # Weight update with memristive characteristc
@@ -1585,18 +1541,10 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                                                                                                1 - np.exp(vltd / 256))
 
 
-        # Adapitve Drop Connect
-        if ADC:
-            p = np.round(minmax_scale(
-                np.nan_to_num(self.connection.w.cpu().detach().numpy().reshape(X_size * Ae_size), copy=False),
-                feature_range=(0.9995, 1)).reshape(X_size, Ae_size), 3)
-            m = torch.zeros(X_size, Ae_size).to('cuda')
-
-            for i in range(X_size):
-                for j in range(Ae_size):
-                    m[i, j] = int(bernoulli.rvs(p[i, j], size=1))
-
-            self.connection.w *= m
+        # Network pruning
+        if Pruning:
+            check = torch.where(self.connection.w >= 0.02, True, False)
+            self.connection.w *= check
 
 
         super().update()
@@ -1671,6 +1619,8 @@ class MemristiveSTDP_KIST(LearningRule):
         s_record = kwargs.get('s_record', [])
         t_record = kwargs.get('t_record', [])
         simulation_time = kwargs.get('simulation_time')
+        high = kwargs.get('rand_gmax')
+        low = kwargs.get('rand_gmin')
         s_record.append(source_s.tolist())
         t_record.append(target_s.tolist())
         source_r = torch.tensor(s_record)
@@ -1692,6 +1642,7 @@ class MemristiveSTDP_KIST(LearningRule):
         Ae_index_LTP = 0
         Ae_index_LTD = 0
 
+
         # Synaptic Template
         template_exc = []
         template_exc = kwargs.get('template_exc')
@@ -1704,19 +1655,7 @@ class MemristiveSTDP_KIST(LearningRule):
                     self.connection.w[j, template_exc[i]] = 0
                 for j in reinforce_index_input[i]:
                     if self.connection.w[j, template_exc[i]] <= 0.5:
-                        self.connection.w[j, template_exc[i]] = 1.0
-
-
-        # Dead synpase simulation
-        dead_index_input = []
-        dead_index_exc = []
-        DS = kwargs.get('DS')
-        if DS:
-            dead_index_input = kwargs.get('dead_index_input')
-            dead_index_exc = kwargs.get('dead_index_exc')
-            for i in range(len(dead_index_exc)):
-                for j in dead_index_input[i]:
-                    self.connection.w[j, dead_index_exc[i]] = 0
+                        self.connection.w[j, template_exc[i]] = high[j, template_exc[i]]
 
 
         # Weight update with memristive characteristc
@@ -1740,10 +1679,10 @@ class MemristiveSTDP_KIST(LearningRule):
                                 for j in range(X_cause_count):
                                     t = abs(Ae_time_LTP - X_cause_time[j])
                                     if (t <= ref_t):
-                                        if (self.connection.w[i, k.item()] == 1.0):
+                                        if (self.connection.w[i, k.item()] == high[i, k.item()]):
                                             continue
                                         else:
-                                            self.connection.w[i, k.item()] = 1.0
+                                            self.connection.w[i, k.item()] = high[i, k.item()]
 
             elif Ae_time_LTP >= pulse_time_LTP:
                 if torch.sum(source_r[Ae_time_LTP - pulse_time_LTP:Ae_time_LTP]) > 0:  # LTP
@@ -1760,10 +1699,10 @@ class MemristiveSTDP_KIST(LearningRule):
                                 for j in range(X_cause_count):
                                     t = abs(Ae_time_LTP - X_cause_time[j])
                                     if (t <= ref_t):
-                                        if (self.connection.w[i, k.item()] == 1.0):
+                                        if (self.connection.w[i, k.item()] == high[i, k.item()]):
                                             continue
                                         else:
-                                            self.connection.w[i, k.item()] = 1.0
+                                            self.connection.w[i, k.item()] = high[i, k.item()]
 
                 if time - pulse_time_LTD > 0:
                     if torch.numel(
@@ -1785,10 +1724,10 @@ class MemristiveSTDP_KIST(LearningRule):
                                         for j in range(X_cause_count):
                                             t = abs(Ae_time_LTP - X_cause_time[j])
                                             if (t <= ref_t):
-                                                if (self.connection.w[i, k.item()] == 0.2):
+                                                if (self.connection.w[i, k.item()] == low[i, k.item()]):
                                                     continue
                                                 else:
-                                                    self.connection.w[i, k.item()] = 0.2
+                                                    self.connection.w[i, k.item()] = low[i, k.item()]
 
                 if time == simulation_time:
                     for l in range(time - pulse_time_LTD, time):
@@ -1808,13 +1747,14 @@ class MemristiveSTDP_KIST(LearningRule):
                                             for j in range(X_cause_count):
                                                 t = abs(Ae_time_LTP - X_cause_time[j])
                                                 if (t <= ref_t):
-                                                    if (self.connection.w[i, k.item()] == 0.2):
+                                                    if (self.connection.w[i, k.item()] == low[i, k.item()]):
                                                         continue
                                                     else:
-                                                        self.connection.w[i, k.item()] = 0.2
+                                                        self.connection.w[i, k.item()] = low[i, k.item()]
 
 
         super().update()
+
 
 class PostPre(LearningRule):
     # language=rst
@@ -1858,204 +1798,10 @@ class PostPre(LearningRule):
 
         if isinstance(connection, (Connection, LocalConnection)):
             self.update = self._connection_update
-        elif isinstance(connection, LocalConnection1D):
-            self.update = self._local_connection1d_update
-        elif isinstance(connection, LocalConnection2D):
-            self.update = self._local_connection2d_update
-        elif isinstance(connection, LocalConnection3D):
-            self.update = self._local_connection3d_update
-        elif isinstance(connection, Conv1dConnection):
-            self.update = self._conv1d_connection_update
-        elif isinstance(connection, Conv2dConnection):
-            self.update = self._conv2d_connection_update
-        elif isinstance(connection, Conv3dConnection):
-            self.update = self._conv3d_connection_update
         else:
             raise NotImplementedError(
                 "This learning rule is not supported for this Connection type."
             )
-
-    def _local_connection1d_update(self, **kwargs) -> None:
-        # language=rst
-        """
-        Post-pre learning rule for ``LocalConnection1D`` subclass of
-        ``AbstractConnection`` class.
-        """
-        # Get LC layer parameters.
-        stride = self.connection.stride
-        batch_size = self.source.batch_size
-        kernel_height = self.connection.kernel_size
-        in_channels = self.connection.source.shape[0]
-        out_channels = self.connection.n_filters
-        height_out = self.connection.conv_size
-
-        target_x = self.target.x.reshape(batch_size, out_channels * height_out, 1)
-        target_x = target_x * torch.eye(out_channels * height_out).to(
-            self.connection.w.device
-        )
-        source_s = (
-            self.source.s.type(torch.float)
-            .unfold(-1, kernel_height, stride)
-            .reshape(batch_size, height_out, in_channels * kernel_height)
-            .repeat(1, out_channels, 1)
-            .to(self.connection.w.device)
-        )
-
-        target_s = self.target.s.type(torch.float).reshape(
-            batch_size, out_channels * height_out, 1
-        )
-        target_s = target_s * torch.eye(out_channels * height_out).to(
-            self.connection.w.device
-        )
-        source_x = (
-            self.source.x.unfold(-1, kernel_height, stride)
-            .reshape(batch_size, height_out, in_channels * kernel_height)
-            .repeat(1, out_channels, 1)
-            .to(self.connection.w.device)
-        )
-
-        # Pre-synaptic update.
-        if self.nu[0].any():
-            pre = self.reduction(torch.bmm(target_x, source_s), dim=0)
-            self.connection.w -= self.nu[0] * pre.view(self.connection.w.size())
-        # Post-synaptic update.
-        if self.nu[1].any():
-            post = self.reduction(torch.bmm(target_s, source_x), dim=0)
-            self.connection.w += self.nu[1] * post.view(self.connection.w.size())
-
-        super().update()
-
-    def _local_connection2d_update(self, **kwargs) -> None:
-        # language=rst
-        """
-        Post-pre learning rule for ``LocalConnection2D`` subclass of
-        ``AbstractConnection`` class.
-        """
-        # Get LC layer parameters.
-        stride = self.connection.stride
-        batch_size = self.source.batch_size
-        kernel_height = self.connection.kernel_size[0]
-        kernel_width = self.connection.kernel_size[1]
-        in_channels = self.connection.source.shape[0]
-        out_channels = self.connection.n_filters
-        height_out = self.connection.conv_size[0]
-        width_out = self.connection.conv_size[1]
-
-        target_x = self.target.x.reshape(
-            batch_size, out_channels * height_out * width_out, 1
-        )
-        target_x = target_x * torch.eye(out_channels * height_out * width_out).to(
-            self.connection.w.device
-        )
-        source_s = (
-            self.source.s.type(torch.float)
-            .unfold(-2, kernel_height, stride[0])
-            .unfold(-2, kernel_width, stride[1])
-            .reshape(
-                batch_size,
-                height_out * width_out,
-                in_channels * kernel_height * kernel_width,
-            )
-            .repeat(1, out_channels, 1)
-            .to(self.connection.w.device)
-        )
-
-        target_s = self.target.s.type(torch.float).reshape(
-            batch_size, out_channels * height_out * width_out, 1
-        )
-        target_s = target_s * torch.eye(out_channels * height_out * width_out).to(
-            self.connection.w.device
-        )
-        source_x = (
-            self.source.x.unfold(-2, kernel_height, stride[0])
-            .unfold(-2, kernel_width, stride[1])
-            .reshape(
-                batch_size,
-                height_out * width_out,
-                in_channels * kernel_height * kernel_width,
-            )
-            .repeat(1, out_channels, 1)
-            .to(self.connection.w.device)
-        )
-
-        # Pre-synaptic update.
-        if self.nu[0].any():
-            pre = self.reduction(torch.bmm(target_x, source_s), dim=0)
-            self.connection.w -= self.nu[0] * pre.view(self.connection.w.size())
-        # Post-synaptic update.
-        if self.nu[1].any():
-            post = self.reduction(torch.bmm(target_s, source_x), dim=0)
-            self.connection.w += self.nu[1] * post.view(self.connection.w.size())
-
-        super().update()
-
-    def _local_connection3d_update(self, **kwargs) -> None:
-        # language=rst
-        """
-        Post-pre learning rule for ``LocalConnection3D`` subclass of
-        ``AbstractConnection`` class.
-        """
-        # Get LC layer parameters.
-        stride = self.connection.stride
-        batch_size = self.source.batch_size
-        kernel_height = self.connection.kernel_size[0]
-        kernel_width = self.connection.kernel_size[1]
-        kernel_depth = self.connection.kernel_size[2]
-        in_channels = self.connection.source.shape[0]
-        out_channels = self.connection.n_filters
-        height_out = self.connection.conv_size[0]
-        width_out = self.connection.conv_size[1]
-        depth_out = self.connection.conv_size[2]
-
-        target_x = self.target.x.reshape(
-            batch_size, out_channels * height_out * width_out * depth_out, 1
-        )
-        target_x = target_x * torch.eye(
-            out_channels * height_out * width_out * depth_out
-        ).to(self.connection.w.device)
-        source_s = (
-            self.source.s.type(torch.float)
-            .unfold(-3, kernel_height, stride[0])
-            .unfold(-3, kernel_width, stride[1])
-            .unfold(-3, kernel_depth, stride[2])
-            .reshape(
-                batch_size,
-                height_out * width_out * depth_out,
-                in_channels * kernel_height * kernel_width * kernel_depth,
-            )
-            .repeat(1, out_channels, 1)
-            .to(self.connection.w.device)
-        )
-
-        target_s = self.target.s.type(torch.float).reshape(
-            batch_size, out_channels * height_out * width_out * depth_out, 1
-        )
-        target_s = target_s * torch.eye(
-            out_channels * height_out * width_out * depth_out
-        ).to(self.connection.w.device)
-        source_x = (
-            self.source.x.unfold(-3, kernel_height, stride[0])
-            .unfold(-3, kernel_width, stride[1])
-            .unfold(-3, kernel_depth, stride[2])
-            .reshape(
-                batch_size,
-                height_out * width_out * depth_out,
-                in_channels * kernel_height * kernel_width * kernel_depth,
-            )
-            .repeat(1, out_channels, 1)
-            .to(self.connection.w.device)
-        )
-
-        # Pre-synaptic update.
-        if self.nu[0].any():
-            pre = self.reduction(torch.bmm(target_x, source_s), dim=0)
-            self.connection.w -= self.nu[0] * pre.view(self.connection.w.size())
-        # Post-synaptic update.
-        if self.nu[1].any():
-            post = self.reduction(torch.bmm(target_s, source_x), dim=0)
-            self.connection.w += self.nu[1] * post.view(self.connection.w.size())
-
-        super().update()
 
     def _connection_update(self, **kwargs) -> None:
         # language=rst
@@ -2065,16 +1811,37 @@ class PostPre(LearningRule):
         """
         batch_size = self.source.batch_size
 
-        dead_synapses = kwargs.get('dead_synapse')  # Dead synapses simulation
+
+        # Additional functions
+        ST = kwargs.get('ST')  # ST useage
+        Pruning = kwargs.get("Pruning")  # Pruning useage
+        DS = kwargs.get("DS")  # DS simulation
+
+
+        # Synaptic Template
+        if ST:
+            drop_mask = kwargs.get('drop_mask')
+            reinforce_index_input = kwargs.get('reinforce_index_input')
+            reinforce_ref = kwargs.get('reinforce_ref')
+            n_neurons = kwargs.get('n_neurons')
+            self.connection.w *= drop_mask
+            for i in range(n_neurons):
+                for j in reinforce_index_input[i]:
+                    if self.connection.w[j, i] <= 1.0:        # min 0.4
+                        self.connection.w[j, i] = reinforce_ref[i][int(np.where(
+                            j == reinforce_index_input[i])[0])] * 0.5      # scaling 0.5
+
 
         # Dead synpase simulation
-        if dead_synapses:
+        if DS:
             dead_index_input = kwargs.get('dead_index_input')
             dead_index_exc = kwargs.get('dead_index_exc')
-
             for i in range(len(dead_index_exc)):
                 for j in dead_index_input[i]:
-                    self.connection.w[j, dead_index_exc[i]] = 0
+                    self.connection.w[j, dead_index_exc[i]] = gmax[j, dead_index_exc[i]]
+                    # 0 for SA0 faults
+                    # gmax[j, dead_index_exc[i]] for SA1 faults
+
 
         # Pre-synaptic update.
         if self.nu[0].any():
@@ -2092,143 +1859,129 @@ class PostPre(LearningRule):
             self.connection.w += self.reduction(torch.bmm(source_x, target_s), dim=0)
             del source_x, target_s
 
+
+        # Network pruning
+        if Pruning:
+            check_pruning = torch.where(self.connection.w >= 0.02, True, False)
+            self.connection.w *= check_pruning
+
+
         super().update()
 
-    def _conv1d_connection_update(self, **kwargs) -> None:
+
+class Thresh_PostPre(LearningRule):
+    # language=rst
+    """
+    Simple STDP rule involving both pre- and post-synaptic spiking activity. By default,
+    pre-synaptic update is negative and the post-synaptic update is positive.
+    """
+
+    def __init__(
+        self,
+        connection: AbstractConnection,
+        nu: Optional[Union[float, Sequence[float], Sequence[torch.Tensor]]] = None,
+        reduction: Optional[callable] = None,
+        weight_decay: float = 0.0,
+        **kwargs,
+    ) -> None:
         # language=rst
         """
-        Post-pre learning rule for ``Conv1dConnection`` subclass of
-        ``AbstractConnection`` class.
+        Constructor for ``PostPre`` learning rule.
+
+        :param connection: An ``AbstractConnection`` object whose weights the
+            ``PostPre`` learning rule will modify.
+        :param nu: Single or pair of learning rates for pre- and post-synaptic events. It also
+            accepts a pair of tensors to individualize learning rates of each neuron.
+            In this case, their shape should be the same size as the connection weights.
+        :param reduction: Method for reducing parameter updates along the batch
+            dimension.
+        :param weight_decay: Coefficient controlling rate of decay of the weights each iteration.
         """
-        # Get convolutional layer parameters.
-        out_channels, in_channels, kernel_size = self.connection.w.size()
-        padding, stride = self.connection.padding, self.connection.stride
-        batch_size = self.source.batch_size
-
-        # Reshaping spike traces and spike occurrences.
-        source_x = F.pad(self.source.x, _pair(padding))
-        source_x = source_x.unfold(-1, kernel_size, stride).reshape(
-            batch_size, -1, in_channels * kernel_size
+        super().__init__(
+            connection=connection,
+            nu=nu,
+            reduction=reduction,
+            weight_decay=weight_decay,
+            **kwargs,
         )
-        target_x = self.target.x.view(batch_size, out_channels, -1)
-        source_s = F.pad(self.source.s.float(), _pair(padding))
-        source_s = source_s.unfold(-1, kernel_size, stride).reshape(
-            batch_size, -1, in_channels * kernel_size
-        )
-        target_s = self.target.s.view(batch_size, out_channels, -1).float()
 
-        # Pre-synaptic update.
-        if self.nu[0].any():
-            pre = self.reduction(torch.bmm(target_x, source_s), dim=0)
-            self.connection.w -= self.nu[0] * pre.view(self.connection.w.size())
+        assert (
+            self.source.traces and self.target.traces
+        ), "Both pre- and post-synaptic nodes must record spike traces."
 
-        # Post-synaptic update.
-        if self.nu[1].any():
-            post = self.reduction(torch.bmm(target_s, source_x), dim=0)
-            self.connection.w += self.nu[1] * post.view(self.connection.w.size())
+        if isinstance(connection, (Connection, LocalConnection)):
+            self.update = self._connection_update
+        else:
+            raise NotImplementedError(
+                "This learning rule is not supported for this Connection type."
+            )
 
-        super().update()
-
-    def _conv2d_connection_update(self, **kwargs) -> None:
+    def _connection_update(self, **kwargs) -> None:
         # language=rst
         """
-        Post-pre learning rule for ``Conv2dConnection`` subclass of
-        ``AbstractConnection`` class.
+        Post-pre learning rule for ``Connection`` subclass of ``AbstractConnection``
+        class.
         """
-        # Get convolutional layer parameters.
-        out_channels, _, kernel_height, kernel_width = self.connection.w.size()
-        padding, stride = self.connection.padding, self.connection.stride
         batch_size = self.source.batch_size
 
-        # Reshaping spike traces and spike occurrences.
-        source_x = im2col_indices(
-            self.source.x, kernel_height, kernel_width, padding=padding, stride=stride
-        )
-        target_x = self.target.x.view(batch_size, out_channels, -1)
-        source_s = im2col_indices(
-            self.source.s.float(),
-            kernel_height,
-            kernel_width,
-            padding=padding,
-            stride=stride,
-        )
-        target_s = self.target.s.view(batch_size, out_channels, -1).float()
+
+        # Additional functions
+        ST = kwargs.get('ST')  # ST useage
+        Pruning = kwargs.get("Pruning")  # Pruning useage
+        DS = kwargs.get("DS")  # DS simulation
+
+
+        # Synaptic Template
+        if ST:
+            drop_mask = kwargs.get('drop_mask')
+            reinforce_index_input = kwargs.get('reinforce_index_input')
+            reinforce_ref = kwargs.get('reinforce_ref')
+            n_neurons = kwargs.get('n_neurons')
+            self.connection.w *= drop_mask
+            for i in range(n_neurons):
+                for j in reinforce_index_input[i]:
+                    if self.connection.w[j, i] <= 0.4:  # min 0.4
+                        self.connection.w[j, i] = reinforce_ref[i][int(np.where(
+                            j == reinforce_index_input[i])[0])] * 0.5  # scaling 0.5
+
+
+        # Dead synpase simulation
+        if DS:
+            dead_index_input = kwargs.get('dead_index_input')
+            dead_index_exc = kwargs.get('dead_index_exc')
+            for i in range(len(dead_index_exc)):
+                for j in dead_index_input[i]:
+                    self.connection.w[j, dead_index_exc[i]] = gmax[j, dead_index_exc[i]]
+                    # 0 for SA0 faults
+                    # gmax[j, dead_index_exc[i]] for SA1 faults
+
 
         # Pre-synaptic update.
-        if self.nu[0].any():
-            pre = self.reduction(
-                torch.bmm(target_x, source_s.permute((0, 2, 1))), dim=0
-            )
-            # print(self.nu[0].shape, self.connection.w.size())
-            self.connection.w -= self.nu[0] * pre.view(self.connection.w.size())
+        if self.nu[0].any() and torch.sum(self.target.s.view(-1).long()) is not 0:
+            source_s = self.source.s.view(batch_size, -1).unsqueeze(2).float()
+            target_x = self.target.x.view(batch_size, -1).unsqueeze(1) * self.nu[0]
+            delta_LTD = self.reduction(torch.bmm(source_s, target_x), dim=0)
+            torch.where(self.connection.w < 0.1, 0, delta_LTD)
+            self.connection.w -= delta_LTD
+            del source_s, target_x
 
         # Post-synaptic update.
-        if self.nu[1].any():
-            post = self.reduction(
-                torch.bmm(target_s, source_x.permute((0, 2, 1))), dim=0
+        if self.nu[1].any() and torch.sum(self.target.s.view(-1).long()) is not 0:
+            target_s = (
+                self.target.s.view(batch_size, -1).unsqueeze(1).float() * self.nu[1]
             )
-            self.connection.w += self.nu[1] * post.view(self.connection.w.size())
+            source_x = self.source.x.view(batch_size, -1).unsqueeze(2)
+            delta_LTP = self.reduction(torch.bmm(source_x, target_s), dim=0)
+            torch.where(self.connection.w > 0.4, 0, delta_LTP)
+            self.connection.w += delta_LTP
+            del source_x, target_s
+
+
+        # Network pruning
+        if Pruning:
+            check = torch.where(self.connection.w >= 0.02, True, False)
+            self.connection.w *= check
+
 
         super().update()
 
-    def _conv3d_connection_update(self, **kwargs) -> None:
-        # language=rst
-        """
-        Post-pre learning rule for ``Conv3dConnection`` subclass of
-        ``AbstractConnection`` class.
-        """
-        # Get convolutional layer parameters.
-        (
-            out_channels,
-            in_channels,
-            kernel_depth,
-            kernel_height,
-            kernel_width,
-        ) = self.connection.w.size()
-        padding, stride = self.connection.padding, self.connection.stride
-        batch_size = self.source.batch_size
-
-        # Reshaping spike traces and spike occurrences.
-        source_x = F.pad(
-            self.source.x,
-            (padding[0], padding[0], padding[1], padding[1], padding[2], padding[2]),
-        )
-        source_x = (
-            source_x.unfold(-3, kernel_width, stride[0])
-            .unfold(-3, kernel_height, stride[1])
-            .unfold(-3, kernel_depth, stride[2])
-            .reshape(
-                batch_size,
-                -1,
-                in_channels * kernel_width * kernel_height * kernel_depth,
-            )
-        )
-        target_x = self.target.x.view(batch_size, out_channels, -1)
-        source_s = F.pad(
-            self.source.s,
-            (padding[0], padding[0], padding[1], padding[1], padding[2], padding[2]),
-        )
-        source_s = (
-            source_s.unfold(-3, kernel_width, stride[0])
-            .unfold(-3, kernel_height, stride[1])
-            .unfold(-3, kernel_depth, stride[2])
-            .reshape(
-                batch_size,
-                -1,
-                in_channels * kernel_width * kernel_height * kernel_depth,
-            )
-        )
-        target_s = self.target.s.view(batch_size, out_channels, -1).float()
-        # print(target_x.shape, source_s.shape, self.connection.w.shape)
-
-        # Pre-synaptic update.
-        if self.nu[0].any():
-            pre = self.reduction(torch.bmm(target_x, source_s), dim=0)
-            self.connection.w -= self.nu[0] * pre.view(self.connection.w.size())
-
-        # Post-synaptic update.
-        if self.nu[1].any():
-            post = self.reduction(torch.bmm(target_s, source_x), dim=0)
-            self.connection.w += self.nu[1] * post.view(self.connection.w.size())
-
-        super().update()
