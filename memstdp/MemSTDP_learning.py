@@ -1827,7 +1827,7 @@ class PostPre(LearningRule):
             self.connection.w *= drop_mask
             for i in range(n_neurons):
                 for j in reinforce_index_input[i]:
-                    if self.connection.w[j, i] <= 1.0:        # min 0.4
+                    if self.connection.w[j, i] <= 0.4:        # min 0.4
                         self.connection.w[j, i] = reinforce_ref[i][int(np.where(
                             j == reinforce_index_input[i])[0])] * 0.5      # scaling 0.5
 
