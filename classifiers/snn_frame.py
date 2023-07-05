@@ -171,8 +171,8 @@ else:
 wave_data = []
 classes = []
 
-preprocessed = []
-pre_average = []
+normalized = []
+class_avg = []
 drop_input = []
 reinforce_input = []
 reinforce_ref = []
@@ -200,7 +200,7 @@ for line in raw:
         else:
             line_label = 0
 
-    preprocessed.append(np.abs(fft))
+    normalized.append(np.abs(fft))
     classes.append(line_label)
     lbl = torch.tensor(line_label).long()
 
@@ -216,23 +216,23 @@ n_train = len(train_data)
 n_test = len(test_data)
 
 num_inputs = train_data[-1]["encoded_image"].shape[1]
-pre_size = int(np.shape(preprocessed)[0] / n_classes)
+pre_size = int(np.shape(normalized)[0] / n_classes)
 exc_size = int(np.sqrt(n_neurons))
-entire = np.sort(np.mean(preprocessed, axis=0))
+whole_avg = np.sort(np.mean(normalized, axis=0))
 
 if ST:
     for i in range(n_classes):
-        pre_average.append(np.mean(preprocessed[i * pre_size:(i + 1) * pre_size], axis=0))
+        class_avg.append(np.mean(normalized[i * pre_size:(i + 1) * pre_size], axis=0))
 
         if AST:
-            drop_num = len(np.where(pre_average[i] <= entire[int(num_inputs * 0.3) - 1])[0])        # drop 0.3
-            reinforce_num = len(np.where(pre_average[i] >= entire[int(num_inputs * 1.0) - 1])[0])   # reinforce 1.0
+            drop_num = len(np.where(class_avg[i] <= whole_avg[int(num_inputs * 0.3) - 1])[0])        # drop 0.3
+            reinforce_num = len(np.where(class_avg[i] >= whole_avg[int(num_inputs * 1.0) - 1])[0])   # reinforce 1.0
 
-        drop_input.append(np.argwhere(pre_average[i] < np.sort(pre_average[i])[0:drop_num + 1][-1]).flatten())
+        drop_input.append(np.argwhere(class_avg[i] < np.sort(class_avg[i])[0:drop_num + 1][-1]).flatten())
         reinforce_input.append(
-            np.argwhere(pre_average[i] > np.sort(pre_average[i])[0:num_inputs - reinforce_num][-1]).flatten())
+            np.argwhere(class_avg[i] > np.sort(class_avg[i])[0:num_inputs - reinforce_num][-1]).flatten())
         if reinforce_num != 0:
-            values = np.sort(pre_average[i])[::-1][:reinforce_num]
+            values = np.sort(class_avg[i])[::-1][:reinforce_num]
             reinforce_ref.append(values / np.max(values))
         else:
             reinforce_ref.append([])
