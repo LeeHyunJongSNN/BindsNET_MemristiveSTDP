@@ -1644,18 +1644,17 @@ class MemristiveSTDP_KIST(LearningRule):
 
 
         # Synaptic Template
-        template_exc = []
-        template_exc = kwargs.get('template_exc')
         ST = kwargs.get('ST')
         if ST:
-            drop_index_input = kwargs.get('drop_index_input')
+            drop_mask = kwargs.get('drop_mask')
             reinforce_index_input = kwargs.get('reinforce_index_input')
-            for i in range(len(template_exc)):
-                for j in drop_index_input[i]:
-                    self.connection.w[j, template_exc[i]] = 0
+            reinforce_ref = kwargs.get('reinforce_ref')
+            n_neurons = kwargs.get('n_neurons')
+            self.connection.w *= drop_mask
+            for i in range(n_neurons):
                 for j in reinforce_index_input[i]:
-                    if self.connection.w[j, template_exc[i]] <= 0.5:
-                        self.connection.w[j, template_exc[i]] = high[j, template_exc[i]]
+                    if self.connection.w[j, i] < high[j, i]:
+                        self.connection.w[j, i] = high[j, i]
 
 
         # Weight update with memristive characteristc
