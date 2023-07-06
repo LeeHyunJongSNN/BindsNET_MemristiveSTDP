@@ -53,13 +53,13 @@ parser.add_argument("--dt", type=int, default=1.0)
 parser.add_argument("--encoder_type", dest="encoder_type", default="LinearRateEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=0.95)
+parser.add_argument("--test_ratio", type=float, default=2/3)
 parser.add_argument("--ST", type=bool, default=False)
 parser.add_argument("--drop_num", type=int, default=8)
 parser.add_argument("--reinforce_num", type=int, default=2)
 parser.add_argument("--random_G", type=bool, default=False)
-parser.add_argument("--min_weight", type=float, default=1.0)
-parser.add_argument("--ratio_weight", type=float, default=27.0)
+parser.add_argument("--min_weight", type=float, default=0.1)
+parser.add_argument("--ratio_weight", type=float, default=7.0)
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
 parser.set_defaults(train_plot=True, test_plot=False, gpu=False)
@@ -146,19 +146,19 @@ drop_input = []
 reinforce_input = []
 dead_input = []
 
-fname = "/home/leehyunjong/Dataset_2.4GHz/Wireless/"\
-        "(sine+square+sawtooth)_1kHz_10_vector_12dB_20100.txt"
+# fname = "/home/leehyunjong/Dataset_2.4GHz/Wireless/"\
+#         "(sine+square+sawtooth)_1kHz_10_vector_12dB_20100.txt"
 
-# fname = "/home/leehyunjong/Dataset_simple/Kist/No_distortion/"\
-#         "sine+square+sawtooth_10.txt"
+fname = "/home/leehyunjong/Dataset_simple/Kist/Distortion/"\
+        "sine+square+sawtooth_10.txt"
 
 raw = np.loadtxt(fname, dtype='complex')
 
 for line in raw:
     line_data = line[0:len(line) - 1]
     line_label = line[-1]
-    dcr = np.absolute(detrend(line_data - np.mean(line_data)))
-    nrd = np.round(minmax_scale(dcr, feature_range=(0, 1)), 2)
+    # dcr = np.absolute(detrend(line_data - np.mean(line_data)))
+    # nrd = np.round(minmax_scale(dcr, feature_range=(0, 1)), 2)
 
     classes.append(line_label)
     lbl = torch.tensor(line_label).long()
@@ -192,9 +192,10 @@ drop_input *= int(np.ceil(n_neurons / n_classes))
 drop_mask = torch.ones_like(torch.zeros((num_inputs, n_neurons)))
 reinforce_input *= int(np.ceil(n_neurons / n_classes))
 
-for i in range(n_neurons):
-    for j in drop_input[i]:
-        drop_mask[j][i] = 0
+if ST:
+    for i in range(n_neurons):
+        for j in drop_input[i]:
+            drop_mask[j][i] = 0
 
 print(n_train, n_test, n_classes)
 

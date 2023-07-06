@@ -46,7 +46,7 @@ parser.add_argument("--thresh", type=float, default=-58.0)
 parser.add_argument("--theta_plus", type=float, default=0.0009)
 parser.add_argument("--time", type=int, default=500)
 parser.add_argument("--dt", type=int, default=1.0)
-parser.add_argument("--intensity", type=float, default=28)      # increase by 2.5~4
+parser.add_argument("--intensity", type=float, default=12)      # increase by 2.5~4
 parser.add_argument("--encoder_type", dest="encoder_type", default="PoissonEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=100)
@@ -57,7 +57,7 @@ parser.add_argument("--vLTD", type=float, default=0.0)
 parser.add_argument("--beta", type=float, default=1.0)
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=True, test_plot=False, gpu=False)
+parser.set_defaults(train_plot=False, test_plot=False, gpu=False)
 
 args = parser.parse_args()
 
@@ -82,7 +82,6 @@ random_G = args.random_G
 vLTP = args.vLTP
 vLTD = args.vLTD
 beta = args.beta
-train = args.train
 train_plot = args.train_plot
 test_plot = args.test_plot
 gpu = args.gpu
@@ -152,7 +151,7 @@ wave_data = []
 classes = []
 
 fname = "/home/leehyunjong/Wi-Fi_Preambles/"\
-        "WIFI_10MHz_IQvector_9dB_20000.txt"
+        "WIFI_10MHz_IQvector_(minus)3dB_20000.txt"
 
 raw = np.loadtxt(fname, dtype='complex')
 

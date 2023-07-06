@@ -248,6 +248,11 @@ drop_mask = torch.ones_like(torch.zeros((num_inputs, n_neurons)))
 reinforce_input *= int(np.ceil(n_neurons / n_classes))
 reinforce_ref *= int(np.ceil(n_neurons / n_classes))
 
+if ST:
+    for i in range(n_neurons):
+        for j in drop_input[i]:
+            drop_mask[j][i] = 0
+
 print(n_train, n_test, n_classes)
 
 # Build network.
