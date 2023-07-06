@@ -28,7 +28,7 @@ def rank_order_TTFS(datum: torch.Tensor, time: int, dt: float = 1.0, **kwargs) -
 
     # Create spike times tensor.
     spikes = torch.zeros(time, size).byte()
-    term = 5
+    term = 2
     for i in range(size):
         if 0 < times[i] < time:
             spikes[times[i] - 1, i] = 1
