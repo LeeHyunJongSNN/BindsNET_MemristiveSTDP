@@ -53,17 +53,16 @@ parser.add_argument("--dt", type=int, default=1.0)
 parser.add_argument("--encoder_type", dest="encoder_type", default="LinearRateEncoder")
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=10)
-parser.add_argument("--test_ratio", type=float, default=2/3)
-parser.add_argument("--ST", type=bool, default=True)
+parser.add_argument("--test_ratio", type=float, default=0.95)
+parser.add_argument("--ST", type=bool, default=False)
 parser.add_argument("--drop_num", type=int, default=8)
 parser.add_argument("--reinforce_num", type=int, default=2)
-parser.add_argument("--random_G", type=bool, default=True)
-parser.add_argument("--vLTP", type=float, default=0.0)
-parser.add_argument("--vLTD", type=float, default=0.0)
-parser.add_argument("--beta", type=float, default=1.0)
+parser.add_argument("--random_G", type=bool, default=False)
+parser.add_argument("--min_weight", type=float, default=1.0)
+parser.add_argument("--ratio_weight", type=float, default=27.0)
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
-parser.set_defaults(train_plot=False, test_plot=False, gpu=False)
+parser.set_defaults(train_plot=True, test_plot=False, gpu=False)
 
 args = parser.parse_args()
 
@@ -87,9 +86,8 @@ ST = args.ST
 drop_num = args.drop_num
 reinforce_num = args.reinforce_num
 random_G = args.random_G
-vLTP = args.vLTP
-vLTD = args.vLTD
-beta = args.beta
+min_weight = args.min_weight
+ratio_weight = args.ratio_weight
 train_plot = args.train_plot
 test_plot = args.test_plot
 gpu = args.gpu
@@ -117,9 +115,6 @@ torch.set_num_threads(os.cpu_count() - 1)
 print("Running on Device =", device)
 print("Random Seed =", random_seed)
 print("Random G value =", random_G)
-print("vLTP =", vLTP)
-print("vLTD =", vLTD)
-print("beta =", beta)
 
 # Determines number of workers to use
 if n_workers == -1:
@@ -151,19 +146,19 @@ drop_input = []
 reinforce_input = []
 dead_input = []
 
-# fname = "/home/leehyunjong/Dataset_2.4GHz/Wireless/"\
-#         "(sine+square+sawtooth)_1kHz_10_vector_12dB_20100.txt"
+fname = "/home/leehyunjong/Dataset_2.4GHz/Wireless/"\
+        "(sine+square+sawtooth)_1kHz_10_vector_12dB_20100.txt"
 
-fname = "/home/leehyunjong/Dataset_simple/Kist/No_distortion/"\
-        "sine+square+sawtooth_10.txt"
+# fname = "/home/leehyunjong/Dataset_simple/Kist/No_distortion/"\
+#         "sine+square+sawtooth_10.txt"
 
 raw = np.loadtxt(fname, dtype='complex')
 
 for line in raw:
     line_data = line[0:len(line) - 1]
     line_label = line[-1]
-    # dcr = np.absolute(detrend(line_data - np.mean(line_data)))
-    # nrd = np.round(minmax_scale(dcr, feature_range=(0, 1)), 2)
+    dcr = np.absolute(detrend(line_data - np.mean(line_data)))
+    nrd = np.round(minmax_scale(dcr, feature_range=(0, 1)), 2)
 
     classes.append(line_label)
     lbl = torch.tensor(line_label).long()
@@ -194,8 +189,12 @@ if ST:
 
 
 drop_input *= int(np.ceil(n_neurons / n_classes))
+drop_mask = torch.ones_like(torch.zeros((num_inputs, n_neurons)))
 reinforce_input *= int(np.ceil(n_neurons / n_classes))
-template_exc = np.arange(n_neurons)
+
+for i in range(n_neurons):
+    for j in drop_input[i]:
+        drop_mask[j][i] = 0
 
 print(n_train, n_test, n_classes)
 
@@ -210,7 +209,7 @@ network = KISTnetwork_MemSTDP(
     thresh=thresh,
     update_rule=MemristiveSTDP_KIST,
     dt=dt,
-    norm=num_inputs / 5,
+    norm=min_weight * ratio_weight,
     theta_plus=theta_plus,
     inpt_shape=(1, num_inputs, 1),
 )
@@ -261,12 +260,12 @@ voltage_axes, voltage_ims = None, None
 
 # Random variables
 if random_G:
-    high = torch.randn(network.connections[("X", "Ae")].w.size()) * 0.51 + 1
-    low = torch.clamp(torch.randn(network.connections[("X", "Ae")].w.size()) * 0.009 + float(1 / 27), 0)
+    high = torch.randn(network.connections[("X", "Ae")].w.size()) * 0.51 + min_weight * ratio_weight
+    low = torch.randn(network.connections[("X", "Ae")].w.size()) * 0.009 + min_weight
 
 else:
-    high = torch.ones(network.connections[("X", "Ae")].w.size())
-    low = torch.ones(network.connections[("X", "Ae")].w.size()) * float(1 / 27)
+    low = torch.ones(network.connections[("X", "Ae")].w.size()) * min_weight
+    high = low * ratio_weight
 
 # Train the network.
 print("\nBegin training.\n")
@@ -352,9 +351,8 @@ for epoch in range(n_epochs):
         s_record = []
         t_record = []
         network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
-                    simulation_time=time, rand_gmax=high, rand_gmin=low, random_G=random_G,
-                    vLTP=vLTP, vLTD=vLTD, beta=beta, ST=ST,
-                    drop_index_input=drop_input, reinforce_index_input=reinforce_input, template_exc=template_exc)
+                    simulation_time=time, rand_gmax=high, rand_gmin=low, ST=ST, n_neurons=n_neurons,
+                    drop_mask=drop_mask, reinforce_index_input=reinforce_input)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -423,9 +421,8 @@ for step, batch in enumerate(test_data):
     s_record = []
     t_record = []
     network.run(inputs=inputs, time=time, input_time_dim=1, s_record=s_record, t_record=t_record,
-                simulation_time=time, rand_gmax=high, rand_gmin=low, random_G=random_G,
-                vLTP=vLTP, vLTD=vLTD, beta=beta, ST=ST,
-                drop_index_input=drop_input, reinforce_index_input=reinforce_input, template_exc=template_exc)
+                simulation_time=time, rand_gmax=high, rand_gmin=low, ST=ST, n_neurons=n_neurons,
+                drop_mask=drop_mask, reinforce_index_input=reinforce_input)
 
     # Add to spikes recording.
     spike_record[0] = spikes["Ae"].get("s").squeeze()
