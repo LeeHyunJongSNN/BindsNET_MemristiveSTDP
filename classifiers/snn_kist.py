@@ -58,8 +58,8 @@ parser.add_argument("--ST", type=bool, default=False)
 parser.add_argument("--drop_num", type=int, default=8)
 parser.add_argument("--reinforce_num", type=int, default=2)
 parser.add_argument("--random_G", type=bool, default=False)
-parser.add_argument("--min_weight", type=float, default=0.1)
-parser.add_argument("--ratio_weight", type=float, default=7.0)
+parser.add_argument("--case", type=int, default=1)
+parser.add_argument("--alpha", type=float, default=10.0)
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--spare_gpu", dest="spare_gpu", default=0)
 parser.set_defaults(train_plot=True, test_plot=False, gpu=False)
@@ -86,8 +86,8 @@ ST = args.ST
 drop_num = args.drop_num
 reinforce_num = args.reinforce_num
 random_G = args.random_G
-min_weight = args.min_weight
-ratio_weight = args.ratio_weight
+case = args.case
+alpha = args.alpha
 train_plot = args.train_plot
 test_plot = args.test_plot
 gpu = args.gpu
@@ -199,6 +199,23 @@ if ST:
 
 print(n_train, n_test, n_classes)
 
+# Binary status settings
+if case == 1:
+    max_weight = float(1 / 9.6)
+    min_weight = float(1 / 265)
+
+elif case == 2:
+    max_weight = float(1 / 3.3)
+    min_weight = float(1 / 63)
+
+elif case == 3:
+    max_weight = float(1 / 9.1)
+    min_weight = float(1/58.7)
+
+else:
+    max_weight = 1
+    min_weight = 0
+
 # Build network.
 network = KISTnetwork_MemSTDP(
     n_inpt=num_inputs,
@@ -210,7 +227,7 @@ network = KISTnetwork_MemSTDP(
     thresh=thresh,
     update_rule=MemristiveSTDP_KIST,
     dt=dt,
-    norm=min_weight * ratio_weight,
+    norm=max_weight * alpha * num_inputs,
     theta_plus=theta_plus,
     inpt_shape=(1, num_inputs, 1),
 )
@@ -261,12 +278,12 @@ voltage_axes, voltage_ims = None, None
 
 # Random variables
 if random_G:
-    high = torch.randn(network.connections[("X", "Ae")].w.size()) * 0.51 + min_weight * ratio_weight
-    low = torch.randn(network.connections[("X", "Ae")].w.size()) * 0.009 + min_weight
+    high = torch.randn(network.connections[("X", "Ae")].w.size()) * 0.51 + max_weight * alpha
+    low = torch.randn(network.connections[("X", "Ae")].w.size()) * 0.009 + min_weight * alpha
 
 else:
-    low = torch.ones(network.connections[("X", "Ae")].w.size()) * min_weight
-    high = low * ratio_weight
+    high = torch.ones(network.connections[("X", "Ae")].w.size()) * max_weight * alpha
+    low = torch.ones(network.connections[("X", "Ae")].w.size()) * min_weight * alpha
 
 # Train the network.
 print("\nBegin training.\n")
