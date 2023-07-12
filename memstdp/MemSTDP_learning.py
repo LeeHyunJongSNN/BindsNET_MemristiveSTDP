@@ -227,14 +227,14 @@ class MemristiveSTDP_Simplified(LearningRule):
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
-        # Boolean varibles for addtional feature
-        grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
+        # Boolean or string varibles for addtional feature
+        g_rand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
         ST = kwargs.get('ST')  # ST useage
         Pruning = kwargs.get('Pruning')  # Pruning useage
-        DS = kwargs.get("DS")  # DS simulation
+        FT = kwargs.get('fault_type')  # DS simulation
 
         # Random Conductance uperbound and underbound
-        if grand:
+        if g_rand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
@@ -255,13 +255,15 @@ class MemristiveSTDP_Simplified(LearningRule):
                             j == reinforce_index_input[i])[0])] * 0.5  # scaling 0.5
 
 
-        # Dead synpase simulation
-        if DS:
-            dead_index_input = kwargs.get('dead_index_input')
-            dead_index_exc = kwargs.get('dead_index_exc')
-            for i in range(len(dead_index_exc)):
-                for j in dead_index_input[i]:
-                    self.connection.w[j, dead_index_exc[i]] = 0
+        # Fault synapse application
+        if FT == 'SA0':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= dead_mask
+
+        elif FT == 'SA1':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= torch.where(dead_mask != 0, 0, torch.ones_like(dead_mask))
+            self.connection.w += dead_mask
 
 
         # Weight update with memristive characteristc
@@ -596,20 +598,21 @@ class MemristiveSTDP(LearningRule):
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
-        # Boolean varibles for addtional feature
-        grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
+        # Boolean or string varibles for addtional feature
+        g_rand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
         ST = kwargs.get('ST')  # ST useage
         Pruning = kwargs.get('Pruning')  # Pruning useage
-        DS = kwargs.get("DS")  # DS simulation
+        FT = kwargs.get('fault_type')  # DS simulation
 
         # Random Conductance uperbound and underbound
-        if grand:
+        if g_rand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
         g1ltd = (gmax - gmin) / (1.0 - np.exp(-vltd))
 
 
+        # Synaptic Template
         if ST:
             drop_mask = kwargs.get('drop_mask')
             reinforce_index_input = kwargs.get('reinforce_index_input')
@@ -623,13 +626,15 @@ class MemristiveSTDP(LearningRule):
                             j == reinforce_index_input[i])[0])] * 0.5   # scaling 0.5
 
 
-        # Dead synpase simulation
-        if DS:
-            dead_index_input = kwargs.get('dead_index_input')
-            dead_index_exc = kwargs.get('dead_index_exc')
-            for i in range(len(dead_index_exc)):
-                for j in dead_index_input[i]:
-                    self.connection.w[j, dead_index_exc[i]] = 0
+        # Fault synapse application
+        if FT == 'SA0':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= dead_mask
+
+        elif FT == 'SA1':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= torch.where(dead_mask != 0, 0, torch.ones_like(dead_mask))
+            self.connection.w += dead_mask
 
 
         # Weight update with memristive characteristc
@@ -962,11 +967,11 @@ class MemristiveSTDP(LearningRule):
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
-        # Boolean varibles for addtional feature
-        grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
+        # Random distribution Gmax and Gmin
+        g_rand = kwargs.get('random_G')
 
         # Random Conductance uperbound and underbound
-        if grand:
+        if g_rand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
 
@@ -1165,14 +1170,14 @@ class MemristiveSTDP_TimeProportion(LearningRule):
         gmax = torch.zeros_like(self.connection.w) + 1
         gmin = torch.zeros_like(self.connection.w)
 
-        # Boolean varibles for addtional feature
-        grand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
+        # Boolean or string varibles for addtional feature
+        g_rand = kwargs.get('random_G')  # Random distribution Gmax and Gmin
         ST = kwargs.get('ST')  # ST useage
         Pruning = kwargs.get("Pruning")  # Pruning useage
-        DS = kwargs.get("DS")  # DS simulation
+        FT = kwargs.get('fault_type')   # fault type
 
         # Random conductance uperbound and underbound
-        if grand:
+        if g_rand:
             gmax = kwargs.get('rand_gmax')
             gmin = kwargs.get('rand_gmin')
         g1ltp = (gmax - gmin) / (1.0 - np.exp(-vltp))
@@ -1193,15 +1198,15 @@ class MemristiveSTDP_TimeProportion(LearningRule):
                             j == reinforce_index_input[i])[0])] * 0.5   # scaling 0.5
 
 
-        # Dead synpase simulation
-        if DS:
-            dead_index_input = kwargs.get('dead_index_input')
-            dead_index_exc = kwargs.get('dead_index_exc')
-            for i in range(len(dead_index_exc)):
-                for j in dead_index_input[i]:
-                    self.connection.w[j, dead_index_exc[i]] = gmax[j, dead_index_exc[i]]
-                    # 0 for SA0 faults
-                    # gmax[j, dead_index_exc[i]] for SA1 faults
+        # Fault synapse application
+        if FT == 'SA0':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= dead_mask
+
+        elif FT == 'SA1':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= torch.where(dead_mask != 0, 0, torch.ones_like(dead_mask))
+            self.connection.w += dead_mask
 
 
         # Weight update with memristive characteristc
@@ -1813,8 +1818,8 @@ class PostPre(LearningRule):
 
         # Additional functions
         ST = kwargs.get('ST')  # ST useage
-        Pruning = kwargs.get("Pruning")  # Pruning useage
-        DS = kwargs.get("DS")  # DS simulation
+        Pruning = kwargs.get('Pruning')  # Pruning useage
+        FT = kwargs.get('fault_type')  # FS simulation
 
 
         # Synaptic Template
@@ -1830,16 +1835,25 @@ class PostPre(LearningRule):
                         self.connection.w[j, i] = reinforce_ref[i][int(np.where(
                             j == reinforce_index_input[i])[0])] * 0.5      # scaling 0.5
 
+        # Synaptic Template (vector version)
+        if ST:
+            drop_mask = kwargs.get('drop_mask')
+            reinforce_mask = kwargs.get('reinforce_mask')
+            self.connection.w *= drop_mask
+            self.connection.w *= torch.where(reinforce_mask != 0, 0, torch.ones_like(self.connection.w))
+            self.connection.w *= torch.where((self.connection.w < 0.4) & (reinforce_mask != 0),
+                                                     0, torch.ones_like(self.connection.w))  # min 0.4
+            self.connection.w += reinforce_mask * 0.5  # scaling 0.5
 
-        # Dead synpase simulation
-        if DS:
-            dead_index_input = kwargs.get('dead_index_input')
-            dead_index_exc = kwargs.get('dead_index_exc')
-            for i in range(len(dead_index_exc)):
-                for j in dead_index_input[i]:
-                    self.connection.w[j, dead_index_exc[i]] = gmax[j, dead_index_exc[i]]
-                    # 0 for SA0 faults
-                    # gmax[j, dead_index_exc[i]] for SA1 faults
+        # Fault synapse application
+        if FT == 'SA0':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= dead_mask
+
+        elif FT == 'SA1':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= torch.where(dead_mask != 0, 0 ,torch.ones_like(dead_mask))
+            self.connection.w += dead_mask
 
 
         # Pre-synaptic update.
@@ -1926,8 +1940,8 @@ class Thresh_PostPre(LearningRule):
 
         # Additional functions
         ST = kwargs.get('ST')  # ST useage
-        Pruning = kwargs.get("Pruning")  # Pruning useage
-        DS = kwargs.get("DS")  # DS simulation
+        Pruning = kwargs.get('Pruning')  # Pruning useage
+        FT = kwargs.get('fault_type')  # DS simulation
 
 
         # Synaptic Template
@@ -1943,16 +1957,26 @@ class Thresh_PostPre(LearningRule):
                         self.connection.w[j, i] = reinforce_ref[i][int(np.where(
                             j == reinforce_index_input[i])[0])] * 0.5  # scaling 0.5
 
+        # Synaptic Template (vector version)
+        if ST:
+            drop_mask = kwargs.get('drop_mask')
+            reinforce_mask = kwargs.get('reinforce_mask')
+            self.connection.w *= drop_mask
+            self.connection.w *= torch.where(reinforce_mask != 0, 0, torch.ones_like(self.connection.w))
+            self.connection.w *= torch.where((self.connection.w < 0.4) & (reinforce_mask != 0),
+                                                     0, torch.ones_like(self.connection.w))  # min 0.4
+            self.connection.w += reinforce_mask * 0.5  # scaling 0.5
 
-        # Dead synpase simulation
-        if DS:
-            dead_index_input = kwargs.get('dead_index_input')
-            dead_index_exc = kwargs.get('dead_index_exc')
-            for i in range(len(dead_index_exc)):
-                for j in dead_index_input[i]:
-                    self.connection.w[j, dead_index_exc[i]] = gmax[j, dead_index_exc[i]]
-                    # 0 for SA0 faults
-                    # gmax[j, dead_index_exc[i]] for SA1 faults
+
+        # Fault synapse application
+        if FT == 'SA0':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= dead_mask
+
+        elif FT == 'SA1':
+            dead_mask = kwargs.get('dead_mask')
+            self.connection.w *= torch.where(dead_mask != 0, 0 ,torch.ones_like(dead_mask))
+            self.connection.w += dead_mask
 
 
         # Pre-synaptic update.
