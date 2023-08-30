@@ -1823,27 +1823,27 @@ class PostPre(LearningRule):
 
 
         # Synaptic Template
-        if ST:
-            drop_mask = kwargs.get('drop_mask')
-            reinforce_index_input = kwargs.get('reinforce_index_input')
-            reinforce_ref = kwargs.get('reinforce_ref')
-            n_neurons = kwargs.get('n_neurons')
-            self.connection.w *= drop_mask
-            for i in range(n_neurons):
-                for j in reinforce_index_input[i]:
-                    if self.connection.w[j, i] <= 0.4:        # min 0.4
-                        self.connection.w[j, i] = reinforce_ref[i][int(np.where(
-                            j == reinforce_index_input[i])[0])] * 0.5      # scaling 0.5
+        # if ST:
+        #     drop_mask = kwargs.get('drop_mask')
+        #     reinforce_index_input = kwargs.get('reinforce_index_input')
+        #     reinforce_ref = kwargs.get('reinforce_ref')
+        #     n_neurons = kwargs.get('n_neurons')
+        #     self.connection.w *= drop_mask
+        #     for i in range(n_neurons):
+        #         for j in reinforce_index_input[i]:
+        #             if self.connection.w[j, i] <= 0.4:        # min 0.4
+        #                 self.connection.w[j, i] = reinforce_ref[i][int(np.where(
+        #                     j == reinforce_index_input[i])[0])] * 0.5      # scaling 0.5
 
         # Synaptic Template (vector version)
         if ST:
             drop_mask = kwargs.get('drop_mask')
             reinforce_mask = kwargs.get('reinforce_mask')
             self.connection.w *= drop_mask
-            self.connection.w *= torch.where(reinforce_mask != 0, 0, torch.ones_like(self.connection.w))
-            self.connection.w *= torch.where((self.connection.w < 0.4) & (reinforce_mask != 0),
-                                                     0, torch.ones_like(self.connection.w))  # min 0.4
+            self.connection.w *= torch.where((self.connection.w < 0.4) & (reinforce_mask != 0),     # min 0.4
+                                                     0, torch.ones_like(self.connection.w))
             self.connection.w += reinforce_mask * 0.5  # scaling 0.5
+
 
         # Fault synapse application
         if FT == 'SA0':
@@ -1941,31 +1941,30 @@ class Thresh_PostPre(LearningRule):
         # Additional functions
         ST = kwargs.get('ST')  # ST useage
         Pruning = kwargs.get('Pruning')  # Pruning useage
-        FT = kwargs.get('fault_type')  # DS simulation
+        FT = kwargs.get('fault_type')  # FS simulation
 
 
         # Synaptic Template
-        if ST:
-            drop_mask = kwargs.get('drop_mask')
-            reinforce_index_input = kwargs.get('reinforce_index_input')
-            reinforce_ref = kwargs.get('reinforce_ref')
-            n_neurons = kwargs.get('n_neurons')
-            self.connection.w *= drop_mask
-            for i in range(n_neurons):
-                for j in reinforce_index_input[i]:
-                    if self.connection.w[j, i] <= 0.4:  # min 0.4
-                        self.connection.w[j, i] = reinforce_ref[i][int(np.where(
-                            j == reinforce_index_input[i])[0])] * 0.5  # scaling 0.5
+        # if ST:
+        #     drop_mask = kwargs.get('drop_mask')
+        #     reinforce_index_input = kwargs.get('reinforce_index_input')
+        #     reinforce_ref = kwargs.get('reinforce_ref')
+        #     n_neurons = kwargs.get('n_neurons')
+        #     self.connection.w *= drop_mask
+        #     for i in range(n_neurons):
+        #         for j in reinforce_index_input[i]:
+        #             if self.connection.w[j, i] <= 0.4:        # min 0.4
+        #                 self.connection.w[j, i] = reinforce_ref[i][int(np.where(
+        #                     j == reinforce_index_input[i])[0])] * 0.5      # scaling 0.5
 
         # Synaptic Template (vector version)
         if ST:
             drop_mask = kwargs.get('drop_mask')
             reinforce_mask = kwargs.get('reinforce_mask')
             self.connection.w *= drop_mask
-            self.connection.w *= torch.where(reinforce_mask != 0, 0, torch.ones_like(self.connection.w))
-            self.connection.w *= torch.where((self.connection.w < 0.4) & (reinforce_mask != 0),
-                                                     0, torch.ones_like(self.connection.w))  # min 0.4
-            self.connection.w += reinforce_mask * 0.5  # scaling 0.5
+            self.connection.w *= torch.where((self.connection.w < 0.5) & (reinforce_mask != 0),
+                                             0, torch.ones_like(self.connection.w))
+            self.connection.w += reinforce_mask * 0.4
 
 
         # Fault synapse application
@@ -1975,7 +1974,7 @@ class Thresh_PostPre(LearningRule):
 
         elif FT == 'SA1':
             dead_mask = kwargs.get('dead_mask')
-            self.connection.w *= torch.where(dead_mask != 0, 0 ,torch.ones_like(dead_mask))
+            self.connection.w *= torch.where(dead_mask != 0, 0, torch.ones_like(dead_mask))
             self.connection.w += dead_mask
 
 
@@ -2002,9 +2001,91 @@ class Thresh_PostPre(LearningRule):
 
         # Network pruning
         if Pruning:
-            check = torch.where(self.connection.w >= 0.02, True, False)
-            self.connection.w *= check
+            check_pruning = torch.where(self.connection.w >= 0.02, True, False)
+            self.connection.w *= check_pruning
 
+
+        super().update()
+
+
+class STB_PostPre(LearningRule):
+    # language=rst
+    """
+    Simple STDP rule involving both pre- and post-synaptic spiking activity. By default,
+    pre-synaptic update is negative and the post-synaptic update is positive.
+    """
+
+    def __init__(
+        self,
+        connection: AbstractConnection,
+        nu: Optional[Union[float, Sequence[float], Sequence[torch.Tensor]]] = None,
+        reduction: Optional[callable] = None,
+        weight_decay: float = 0.0,
+        **kwargs,
+    ) -> None:
+        # language=rst
+        """
+        Constructor for ``PostPre`` learning rule.
+
+        :param connection: An ``AbstractConnection`` object whose weights the
+            ``PostPre`` learning rule will modify.
+        :param nu: Single or pair of learning rates for pre- and post-synaptic events. It also
+            accepts a pair of tensors to individualize learning rates of each neuron.
+            In this case, their shape should be the same size as the connection weights.
+        :param reduction: Method for reducing parameter updates along the batch
+            dimension.
+        :param weight_decay: Coefficient controlling rate of decay of the weights each iteration.
+        """
+        super().__init__(
+            connection=connection,
+            nu=nu,
+            reduction=reduction,
+            weight_decay=weight_decay,
+            **kwargs,
+        )
+
+        assert (
+            self.source.traces and self.target.traces
+        ), "Both pre- and post-synaptic nodes must record spike traces."
+
+        if isinstance(connection, (Connection, LocalConnection)):
+            self.update = self._connection_update
+        else:
+            raise NotImplementedError(
+                "This learning rule is not supported for this Connection type."
+            )
+
+    def _connection_update(self, **kwargs) -> None:
+        # language=rst
+        """
+        Post-pre learning rule for ``Connection`` subclass of ``AbstractConnection``
+        class.
+        """
+        batch_size = self.source.batch_size
+        n_neurons = kwargs.get('n_neurons')
+        num_inputs = kwargs.get('num_inputs')
+        dt = kwargs.get('dt')
+        offset = 0.1
+        lam = 0.999
+        scale = 24
+
+        # Pre-synaptic update.
+        if self.nu[0].any():
+            source_s = self.source.s.view(batch_size, -1).unsqueeze(2).float()
+            target_x = self.target.x.view(batch_size, -1).unsqueeze(1) * self.nu[0]
+            trace_LTD = lam * self.reduction(torch.bmm(source_s, target_x), dim=0)
+            delta_LTD = scale * (trace_LTD - offset) / (batch_size * dt)
+            self.connection.w -= delta_LTD
+            del source_s, target_x
+
+        # Post-synaptic update.
+        if self.nu[1].any():
+            target_s = (self.target.s.view(batch_size, -1).unsqueeze(1).float() * self.nu[1])
+            source_x = self.source.x.view(batch_size, -1).unsqueeze(2)
+            trace_LTP = lam * self.reduction(torch.bmm(source_x, target_s), dim=0)
+            delta_LTP = scale * (trace_LTP - offset) / (batch_size * dt)
+            self.connection.w += delta_LTP
+            del source_x, target_s
 
         super().update()
 
